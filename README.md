@@ -4,7 +4,7 @@ This is a PyTorch implementation of Advantage Actor Critic (A2C), a synchronous 
 
 This implementation is inspired by the [OpenAI A2C baseline](https://github.com/openai/baselines/tree/master/baselines/a2c). It uses the same hyper parameters and the model since they were well tuned for Atari games.
 
-## Contibutions
+## Contributions
 
 Contributions are very welcome. If you know how to make this code better, don't hesitate to send a pull request.
 
