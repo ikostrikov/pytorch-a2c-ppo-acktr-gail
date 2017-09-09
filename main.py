@@ -99,7 +99,7 @@ def main():
     # These variables are used to compute average rewards for all processes.
     # Note that rewards are clipped so you need to use a monitor (see envs.py)
     # to get true rewards.
-    total_rewards = torch.zeros([args.num_processes, 1])
+    episode_rewards = torch.zeros([args.num_processes, 1])
     final_rewards = torch.zeros([args.num_processes, 1])
 
     if args.cuda:
@@ -125,7 +125,7 @@ def main():
             state, reward, done, info = envs.step(cpu_actions)
 
             reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
-            total_rewards += reward
+            episode_rewards += reward
 
             np_masks = np.array([0.0 if done_ else 1.0 for done_ in done])
 
@@ -141,9 +141,9 @@ def main():
             masks[step].copy_(torch.from_numpy(np_masks))
 
             final_rewards *= masks[step].cpu()
-            final_rewards += (1 - masks[step].cpu()) * total_rewards
+            final_rewards += (1 - masks[step].cpu()) * episode_rewards
 
-            total_rewards *= masks[step].cpu()
+            episode_rewards *= masks[step].cpu()
 
         # Reshape to do in a single forward pass for all steps
         values, logits = actor_critic(Variable(states.view(-1, *states.size()[-3:])))
