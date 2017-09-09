@@ -62,6 +62,10 @@ except OSError:
     pass
 
 def main():
+    print("#######")
+    print("WARNING: All rewards are clipped so you need to use a monitor (see envs.py) to get true rewards")
+    print("#######")
+
     os.environ['OMP_NUM_THREADS'] = '1'
 
     envs = SubprocVecEnv([make_env(args.env_name, args.seed, i, args.log_dir)
@@ -97,8 +101,6 @@ def main():
     masks = torch.zeros(args.num_steps, args.num_processes, 1)
 
     # These variables are used to compute average rewards for all processes.
-    # Note that rewards are clipped so you need to use a monitor (see envs.py)
-    # to get true rewards.
     episode_rewards = torch.zeros([args.num_processes, 1])
     final_rewards = torch.zeros([args.num_processes, 1])
 
@@ -138,7 +140,7 @@ def main():
             update_current_state(state)
             states[step + 1].copy_(current_state)
             rewards[step].copy_(reward)
-            masks[step].copy_(torch.from_numpy(np_masks))
+            masks[step].copy_(torch.from_numpy(np_masks).unsqueeze(1))
 
             final_rewards *= masks[step].cpu()
             final_rewards += (1 - masks[step].cpu()) * episode_rewards
@@ -183,8 +185,8 @@ def main():
         states[0].copy_(states[-1])
 
         if j % args.log_interval == 0:
-            print("Updates {}, num frames {}, mean clipped reward {:.5f}, max clipped reward {:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".format(
-                j, j * args.num_processes * args.num_steps, final_rewards.mean(), final_rewards.max(), -dist_entropy.data[0], value_loss.data[0], action_loss.data[0]))
+            print("Updates {}, num frames {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".format(
+                j, j * args.num_processes * args.num_steps, final_rewards.mean(), final_rewards.median(), final_rewards.min(), final_rewards.max(), -dist_entropy.data[0], value_loss.data[0], action_loss.data[0]))
 
 if __name__ == "__main__":
     main()
