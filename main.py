@@ -1,16 +1,19 @@
-import gym
+import argparse
+import glob
 import os
-import numpy as np
 
+import gym
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.autograd import Variable
+
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from envs import make_env
 from model import ActorCritic
-from torch.autograd import Variable
-import argparse
+from vizualize_atari import visdom_plot
 
 parser = argparse.ArgumentParser(description='A3C')
 parser.add_argument('--lr', type=float, default=7e-4,
@@ -37,6 +40,8 @@ parser.add_argument('--num-stack', type=int, default=4,
                     help='number of frames to stack (default: 4)')
 parser.add_argument('--log-interval', type=int, default=10,
                     help='log interval, one log per n updates (default: 10)')
+parser.add_argument('--vis-interval', type=int, default=100,
+                    help='vis interval, one log per n updates (default: 100)')
 parser.add_argument('--num-frames', type=int, default=10e6,
                     help='number of frames to train (default: 10e6)')
 parser.add_argument('--env-name', default='PongNoFrameskip-v4',
@@ -45,10 +50,13 @@ parser.add_argument('--log-dir', default='/tmp/gym/',
                     help='directory to save agent logs (default: /tmp/gym)')
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='disables CUDA training')
+parser.add_argument('--no-vis', action='store_true', default=False,
+                    help='disables visdom visualization')
 
 
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
+args.vis = not args.no_vis
 
 num_updates = int(args.num_frames) // args.num_steps // args.num_processes
 
@@ -59,17 +67,27 @@ if args.cuda:
 try:
     os.makedirs(args.log_dir)
 except OSError:
-    pass
+    files = glob.glob(os.path.join(args.log_dir, '*.monitor.json'))
+    for f in files:
+        os.remove(f)
+
 
 def main():
     print("#######")
-    print("WARNING: All rewards are clipped so you need to use a monitor (see envs.py) to get true rewards")
+    print("WARNING: All rewards are clipped so you need to use a monitor (see envs.py) or visdom plot to get true rewards")
     print("#######")
 
     os.environ['OMP_NUM_THREADS'] = '1'
 
-    envs = SubprocVecEnv([make_env(args.env_name, args.seed, i, args.log_dir)
-                            for i in range(args.num_processes)])
+    if args.vis:
+        from visdom import Visdom
+        viz = Visdom()
+        win = None
+
+    envs = SubprocVecEnv([
+        make_env(args.env_name, args.seed, i, args.log_dir)
+        for i in range(args.num_processes)
+    ])
 
     actor_critic = ActorCritic(envs.observation_space.shape[0] * args.num_stack, envs.action_space)
 
@@ -77,7 +95,6 @@ def main():
         actor_critic.cuda()
 
     optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
-    #optimizer = KFACOptimizer(actor_critic, damping=1e-2, kl_clip=0.01, stat_decay=0.99)
 
     obs_shape = envs.observation_space.shape
     obs_shape = (obs_shape[0] * args.num_stack, obs_shape[1], obs_shape[2])
@@ -185,8 +202,17 @@ def main():
         states[0].copy_(states[-1])
 
         if j % args.log_interval == 0:
-            print("Updates {}, num frames {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".format(
-                j, j * args.num_processes * args.num_steps, final_rewards.mean(), final_rewards.median(), final_rewards.min(), final_rewards.max(), -dist_entropy.data[0], value_loss.data[0], action_loss.data[0]))
+            print("Updates {}, num frames {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
+                format(j, j * args.num_processes * args.num_steps,
+                       final_rewards.mean(),
+                       final_rewards.median(),
+                       final_rewards.min(),
+                       final_rewards.max(), -dist_entropy.data[0],
+                       value_loss.data[0], action_loss.data[0]))
+
+        if j % args.vis_interval == 0:
+            win = visdom_plot(viz, win, args.log_dir, args.env_name, 'a2c')
+
 
 if __name__ == "__main__":
     main()
