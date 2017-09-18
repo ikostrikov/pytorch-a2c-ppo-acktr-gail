@@ -13,12 +13,13 @@ from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from envs import make_env
+from kfac import KFACOptimizer
 from model import ActorCritic
 from vizualize_atari import visdom_plot
 
 parser = argparse.ArgumentParser(description='RL')
 parser.add_argument('--algo', default='a2c',
-                    help='algorithm to use: a2c | ppo')
+                    help='algorithm to use: a2c | ppo | acktr')
 parser.add_argument('--lr', type=float, default=7e-4,
                     help='learning rate (default: 7e-4)')
 parser.add_argument('--eps', type=float, default=1e-5,
@@ -69,7 +70,7 @@ parser.add_argument('--no-vis', action='store_true', default=False,
 
 args = parser.parse_args()
 
-assert args.algo in ['a2c', 'ppo']
+assert args.algo in ['a2c', 'ppo', 'acktr']
 if args.algo == 'ppo':
     assert args.num_processes * args.num_steps % args.batch_size == 0
 args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -117,6 +118,8 @@ def main():
         optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
     elif args.algo == 'ppo':
         optimizer = optim.Adam(actor_critic.parameters(), eps=args.eps)
+    elif args.algo == 'acktr':
+        optimizer = KFACOptimizer(actor_critic)
 
     obs_shape = envs.observation_space.shape
     obs_shape = (obs_shape[0] * args.num_stack, obs_shape[1], obs_shape[2])
@@ -205,7 +208,7 @@ def main():
                 returns[step] = returns[step + 1] * \
                     args.gamma * masks[step] + rewards[step]
 
-        if args.algo == 'a2c':
+        if args.algo in ['a2c', 'acktr']:
             # Reshape to do in a single forward pass for all steps
             values, logits = actor_critic(Variable(states[:-1].view(-1, *states.size()[-3:])))
             log_probs = F.log_softmax(logits)
@@ -228,10 +231,29 @@ def main():
 
             action_loss = -(Variable(advantages.data) * action_log_probs).mean()
 
+            if args.algo == 'acktr' and optimizer.steps % optimizer.Ts == 0:
+                # Sampled fisher, see Martens 2014
+                actor_critic.zero_grad()
+                pg_fisher_loss = -action_log_probs.mean()
+
+                value_noise = Variable(torch.randn(values[:-1].size()))
+                if args.cuda:
+                    value_noise = value_noise.cuda()
+
+                sample_values = values[:-1] + value_noise
+                vf_fisher_loss = - (values[:-1] - Variable(sample_values.data)).pow(2).mean()
+
+                fisher_loss = pg_fisher_loss + vf_fisher_loss
+                optimizer.acc_stats = True
+                fisher_loss.backward(retain_graph=True)
+                optimizer.acc_stats = False
+
             optimizer.zero_grad()
             (value_loss * args.value_loss_coef + action_loss - dist_entropy * args.entropy_coef).backward()
 
-            nn.utils.clip_grad_norm(actor_critic.parameters(), args.max_grad_norm)
+            if args.algo == 'a2c':
+                nn.utils.clip_grad_norm(actor_critic.parameters(), args.max_grad_norm)
+
             optimizer.step()
         elif args.algo == 'ppo':
             advantages = returns[:-1] - value_preds[:-1]
