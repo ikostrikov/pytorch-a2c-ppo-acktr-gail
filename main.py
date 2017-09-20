@@ -15,6 +15,7 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from envs import make_env
 from kfac import KFACOptimizer
 from model import ActorCritic
+from storage import RolloutStorage
 from vizualize_atari import visdom_plot
 
 args = get_args()
@@ -64,17 +65,16 @@ def main():
     if args.algo == 'a2c':
         optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
     elif args.algo == 'ppo':
-        optimizer = optim.Adam(actor_critic.parameters(), eps=args.eps)
+        optimizer = optim.Adam(actor_critic.parameters(), args.lr, eps=args.eps)
     elif args.algo == 'acktr':
         optimizer = KFACOptimizer(actor_critic)
 
     obs_shape = envs.observation_space.shape
-    obs_shape = (obs_shape[0] * args.num_stack, obs_shape[1], obs_shape[2])
+    obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
-    states = torch.zeros(args.num_steps + 1, args.num_processes, *obs_shape)
+    rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space.n)
+
     current_state = torch.zeros(args.num_processes, *obs_shape)
-    counts = 0
-
     def update_current_state(state):
         state = torch.from_numpy(np.stack(state)).float()
         current_state[:, :-1] = current_state[:, 1:]
@@ -83,38 +83,24 @@ def main():
     state = envs.reset()
     update_current_state(state)
 
-    rewards = torch.zeros(args.num_steps, args.num_processes, 1)
-    value_preds = torch.zeros(args.num_steps + 1, args.num_processes, 1)
-    old_log_probs = torch.zeros(args.num_steps, args.num_processes, envs.action_space.n)
-    returns = torch.zeros(args.num_steps + 1, args.num_processes, 1)
-
-    actions = torch.LongTensor(args.num_steps, args.num_processes)
-    masks = torch.zeros(args.num_steps, args.num_processes, 1)
+    rollouts.states[0].copy_(current_state)
 
     # These variables are used to compute average rewards for all processes.
     episode_rewards = torch.zeros([args.num_processes, 1])
     final_rewards = torch.zeros([args.num_processes, 1])
 
     if args.cuda:
-        states = states.cuda()
         current_state = current_state.cuda()
-        rewards = rewards.cuda()
-        value_preds = value_preds.cuda()
-        old_log_probs = old_log_probs.cuda()
-        returns = returns.cuda()
-        actions = actions.cuda()
-        masks = masks.cuda()
+        rollouts.cuda()
 
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
-            value, logits = actor_critic(Variable(states[step], volatile=True))
+            value, logits = actor_critic(Variable(rollouts.states[step], volatile=True))
             probs = F.softmax(logits)
             log_probs = F.log_softmax(logits).data
-            actions[step] = probs.multinomial().data
-
-            cpu_actions = actions[step].cpu()
-            cpu_actions = cpu_actions.numpy()
+            action = probs.multinomial().data
+            cpu_actions = action.cpu().numpy()
 
             # Obser reward and next state
             state, reward, done, info = envs.step(cpu_actions)
@@ -122,42 +108,26 @@ def main():
             reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
             episode_rewards += reward
 
-            np_masks = np.array([0.0 if done_ else 1.0 for done_ in done])
-
             # If done then clean the history of observations.
-            pt_masks = torch.from_numpy(np_masks.reshape(np_masks.shape[0], 1, 1, 1)).float()
+            masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done])
+            final_rewards *= masks
+            final_rewards += (1 - masks) * episode_rewards
+            episode_rewards *= masks
+
             if args.cuda:
-                pt_masks = pt_masks.cuda()
-            current_state *= pt_masks
+                masks = masks.cuda()
+            current_state *= masks.unsqueeze(2).unsqueeze(2)
 
             update_current_state(state)
-            states[step + 1].copy_(current_state)
-            value_preds[step].copy_(value.data)
-            old_log_probs[step].copy_(log_probs)
-            rewards[step].copy_(reward)
-            masks[step].copy_(torch.from_numpy(np_masks).unsqueeze(1))
+            rollouts.insert(step, current_state, action, value.data, log_probs, reward, masks)
 
-            final_rewards *= masks[step].cpu()
-            final_rewards += (1 - masks[step].cpu()) * episode_rewards
+        next_value = actor_critic(Variable(rollouts.states[-1], volatile=True))[0].data
 
-            episode_rewards *= masks[step].cpu()
-
-        if args.use_gae:
-            value_preds[-1] = actor_critic(Variable(states[-1], volatile=True))[0].data
-            gae = 0
-            for step in reversed(range(args.num_steps)):
-                delta = rewards[step] + args.gamma * value_preds[step + 1] * masks[step] - value_preds[step]
-                gae = delta + args.gamma * args.tau * masks[step] * gae
-                returns[step] = gae + value_preds[step]
-        else:
-            returns[-1] = actor_critic(Variable(states[-1], volatile=True))[0].data
-            for step in reversed(range(args.num_steps)):
-                returns[step] = returns[step + 1] * \
-                    args.gamma * masks[step] + rewards[step]
+        rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
         if args.algo in ['a2c', 'acktr']:
             # Reshape to do in a single forward pass for all steps
-            values, logits = actor_critic(Variable(states[:-1].view(-1, *states.size()[-3:])))
+            values, logits = actor_critic(Variable(rollouts.states[:-1].view(-1, *rollouts.states.size()[-3:])))
             log_probs = F.log_softmax(logits)
 
             # Unreshape
@@ -169,11 +139,11 @@ def main():
             values = values.view(args.num_steps, args.num_processes, 1)
             logits = logits.view(logits_size)
 
-            action_log_probs = log_probs.gather(2, Variable(actions.unsqueeze(2)))
+            action_log_probs = log_probs.gather(2, Variable(rollouts.actions))
 
             dist_entropy = -(log_probs * probs).sum(-1).mean()
 
-            advantages = Variable(returns[:-1]) - values
+            advantages = Variable(rollouts.returns[:-1]) - values
             value_loss = advantages.pow(2).mean()
 
             action_loss = -(Variable(advantages.data) * action_log_probs).mean()
@@ -203,21 +173,21 @@ def main():
 
             optimizer.step()
         elif args.algo == 'ppo':
-            advantages = returns[:-1] - value_preds[:-1]
+            advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
             advantages = (advantages - advantages.mean()) / advantages.std()
             for _ in range(args.ppo_epoch):
                 sampler = BatchSampler(SubsetRandomSampler(range(args.num_processes * args.num_steps)), args.batch_size * args.num_processes, drop_last=False)
                 for indices in sampler:
-                    states_batch = states[:-1].view(-1, *states.size()[-3:])[indices]
-                    actions_batch = actions.view(-1, 1)[indices]
-                    return_batch = returns[:-1].view(-1, 1)[indices]
+                    states_batch = rollouts.states[:-1].view(-1, *rollouts.states.size()[-3:])[indices]
+                    actions_batch = rollouts.actions.view(-1, 1)[indices]
+                    return_batch = rollouts.returns[:-1].view(-1, 1)[indices]
 
                     # Reshape to do in a single forward pass for all steps
                     values, logits = actor_critic(Variable(states_batch))
                     log_probs = F.log_softmax(logits)
                     action_log_probs = log_probs.gather(1, Variable(actions_batch))
 
-                    old_log_probs_batch = old_log_probs.view(-1, old_log_probs.size(-1))[indices]
+                    old_log_probs_batch = rollouts.old_log_probs.view(-1, rollouts.old_log_probs.size(-1))[indices]
                     old_action_log_probs = old_log_probs_batch.gather(1, actions_batch)
 
                     ratio = torch.exp(action_log_probs - Variable(old_action_log_probs))
@@ -237,7 +207,7 @@ def main():
                     (value_loss + action_loss - dist_entropy * args.entropy_coef).backward()
                     optimizer.step()
 
-        states[0].copy_(states[-1])
+        rollouts.states[0].copy_(rollouts.states[-1])
 
         if j % args.log_interval == 0:
             print("Updates {}, num frames {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
