@@ -77,3 +77,10 @@ class ActorCritic(torch.nn.Module):
 
         return self.ab_fc2(self.critic_linear(x)), self.ab_fc3(
             self.actor_linear(x))
+
+    def act(self, inputs):
+        value, logits = self(inputs)
+        probs = F.softmax(logits)
+        action = probs.multinomial()
+        action_log_probs = F.log_softmax(logits).gather(1, action)
+        return value, action, action_log_probs

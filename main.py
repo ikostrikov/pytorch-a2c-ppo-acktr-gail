@@ -96,11 +96,8 @@ def main():
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
-            value, logits = actor_critic(Variable(rollouts.states[step], volatile=True))
-            probs = F.softmax(logits)
-            action = probs.multinomial().data
-            action_log_probs = F.log_softmax(logits).gather(1, action).data
-            cpu_actions = action.cpu().numpy()
+            value, action, action_log_probs = actor_critic.act(Variable(rollouts.states[step], volatile=True))
+            cpu_actions = action.data.cpu().numpy()
 
             # Obser reward and next state
             state, reward, done, info = envs.step(cpu_actions)
@@ -119,7 +116,7 @@ def main():
             current_state *= masks.unsqueeze(2).unsqueeze(2)
 
             update_current_state(state)
-            rollouts.insert(step, current_state, action, value.data, action_log_probs, reward, masks)
+            rollouts.insert(step, current_state, action.data, value.data, action_log_probs.data, reward, masks)
 
         next_value = actor_critic(Variable(rollouts.states[-1], volatile=True))[0].data
 
