@@ -55,9 +55,10 @@ def main():
         for i in range(args.num_processes)
     ])
 
-    actor_critic = ActorCritic(envs.observation_space.shape[0] * args.num_stack, envs.action_space)
-    if args.algo == 'ppo':
-        actor_critic = nn.DataParallel(actor_critic)
+    obs_shape = envs.observation_space.shape
+    obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
+
+    actor_critic = ActorCritic(obs_shape[0], envs.action_space)
 
     if args.cuda:
         actor_critic.cuda()
@@ -68,9 +69,6 @@ def main():
         optimizer = optim.Adam(actor_critic.parameters(), args.lr, eps=args.eps)
     elif args.algo == 'acktr':
         optimizer = KFACOptimizer(actor_critic)
-
-    obs_shape = envs.observation_space.shape
-    obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space.n)
 
@@ -123,22 +121,10 @@ def main():
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
         if args.algo in ['a2c', 'acktr']:
-            # Reshape to do in a single forward pass for all steps
-            values, logits = actor_critic(Variable(rollouts.states[:-1].view(-1, *rollouts.states.size()[-3:])))
-            log_probs = F.log_softmax(logits)
-
-            # Unreshape
-            logits_size = (args.num_steps, args.num_processes, logits.size(-1))
-
-            log_probs = F.log_softmax(logits).view(logits_size)
-            probs = F.softmax(logits).view(logits_size)
+            values, action_log_probs, dist_entropy = actor_critic.evaluate_actions(Variable(rollouts.states[:-1].view(-1, *obs_shape)), Variable(rollouts.actions.view(-1, 1)))
 
             values = values.view(args.num_steps, args.num_processes, 1)
-            logits = logits.view(logits_size)
-
-            action_log_probs = log_probs.gather(2, Variable(rollouts.actions))
-
-            dist_entropy = -(log_probs * probs).sum(-1).mean()
+            action_log_probs = action_log_probs.view(args.num_steps, args.num_processes, 1)
 
             advantages = Variable(rollouts.returns[:-1]) - values
             value_loss = advantages.pow(2).mean()
@@ -150,12 +136,12 @@ def main():
                 actor_critic.zero_grad()
                 pg_fisher_loss = -action_log_probs.mean()
 
-                value_noise = Variable(torch.randn(values[:-1].size()))
+                value_noise = Variable(torch.randn(values.size()))
                 if args.cuda:
                     value_noise = value_noise.cuda()
 
-                sample_values = values[:-1] + value_noise
-                vf_fisher_loss = - (values[:-1] - Variable(sample_values.data)).pow(2).mean()
+                sample_values = values + value_noise
+                vf_fisher_loss = - (values - Variable(sample_values.data)).pow(2).mean()
 
                 fisher_loss = pg_fisher_loss + vf_fisher_loss
                 optimizer.acc_stats = True
@@ -171,18 +157,19 @@ def main():
             optimizer.step()
         elif args.algo == 'ppo':
             advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
-            advantages = (advantages - advantages.mean()) / advantages.std()
+            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-5)
             for _ in range(args.ppo_epoch):
                 sampler = BatchSampler(SubsetRandomSampler(range(args.num_processes * args.num_steps)), args.batch_size * args.num_processes, drop_last=False)
                 for indices in sampler:
+                    indices = torch.LongTensor(indices)
+                    if args.cuda:
+                        indices = indices.cuda()
                     states_batch = rollouts.states[:-1].view(-1, *rollouts.states.size()[-3:])[indices]
                     actions_batch = rollouts.actions.view(-1, 1)[indices]
                     return_batch = rollouts.returns[:-1].view(-1, 1)[indices]
 
                     # Reshape to do in a single forward pass for all steps
-                    values, logits = actor_critic(Variable(states_batch))
-                    log_probs = F.log_softmax(logits)
-                    action_log_probs = log_probs.gather(1, Variable(actions_batch))
+                    values, action_log_probs, dist_entropy = actor_critic.evaluate_actions(Variable(states_batch), Variable(actions_batch))
 
                     old_action_log_probs = rollouts.action_log_probs.view(-1, rollouts.action_log_probs.size(-1))[indices]
 
@@ -191,10 +178,6 @@ def main():
                     surr1 = ratio * adv_targ
                     surr2 = ratio.clamp(1.0 - args.clip_param, 1.0 + args.clip_param) * adv_targ
                     action_loss = -torch.min(surr1, surr2).mean() # PPO's pessimistic surrogate (L^CLIP)
-
-                    probs = F.softmax(logits)
-
-                    dist_entropy = -(log_probs * probs).sum(-1).mean()
 
                     value_loss = (Variable(return_batch) - values).pow(2).mean()
 

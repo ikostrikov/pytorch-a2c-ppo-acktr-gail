@@ -84,3 +84,17 @@ class ActorCritic(torch.nn.Module):
         action = probs.multinomial()
         action_log_probs = F.log_softmax(logits).gather(1, action)
         return value, action, action_log_probs
+
+    def evaluate_actions(self, inputs, actions):
+        assert inputs.dim() == 4, "Expect to have inputs in num_processes * num_steps x ... format"
+
+        values, logits = self(inputs)
+
+        log_probs = F.log_softmax(logits)
+        probs = F.softmax(logits)
+
+        action_log_probs = log_probs.gather(1, actions)
+
+        dist_entropy = -(log_probs * probs).sum(-1).mean()
+
+        return values, action_log_probs, dist_entropy
