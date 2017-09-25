@@ -82,8 +82,7 @@ class ActorCritic(torch.nn.Module):
         value, logits = self(inputs)
         probs = F.softmax(logits)
         action = probs.multinomial()
-        action_log_probs = F.log_softmax(logits).gather(1, action)
-        return value, action, action_log_probs
+        return value, action
 
     def evaluate_actions(self, inputs, actions):
         assert inputs.dim() == 4, "Expect to have inputs in num_processes * num_steps x ... format"
