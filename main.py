@@ -15,9 +15,9 @@ from arguments import get_args
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from envs import make_env
 from kfac import KFACOptimizer
-from model import ActorCritic
+from model import CNNPolicy, MLPPolicy
 from storage import RolloutStorage
-from vizualize_atari import visdom_plot
+from visualize import visdom_plot
 
 args = get_args()
 
@@ -59,7 +59,12 @@ def main():
     obs_shape = envs.observation_space.shape
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
-    actor_critic = ActorCritic(obs_shape[0], envs.action_space)
+    if envs.action_space.__class__.__name__ == 'Discrete':
+        actor_critic = CNNPolicy(obs_shape[0], envs.action_space)
+        action_shape = 1
+    else:
+        actor_critic = MLPPolicy(obs_shape[0], envs.action_space)
+        action_shape = envs.action_space.shape[0]
 
     if args.cuda:
         actor_critic.cuda()
@@ -71,13 +76,15 @@ def main():
     elif args.algo == 'acktr':
         optimizer = KFACOptimizer(actor_critic)
 
-    rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space.n)
-
+    rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space)
     current_state = torch.zeros(args.num_processes, *obs_shape)
+
     def update_current_state(state):
-        state = torch.from_numpy(np.stack(state)).float()
-        current_state[:, :-1] = current_state[:, 1:]
-        current_state[:, -1] = state
+        shape_dim0 = envs.observation_space.shape[0]
+        state = torch.from_numpy(state).float()
+        if args.num_stack > 1:
+            current_state[:, :-shape_dim0] = current_state[:, shape_dim0:]
+        current_state[:, -shape_dim0:] = state
 
     state = envs.reset()
     update_current_state(state)
@@ -103,7 +110,6 @@ def main():
 
             # Obser reward and next state
             state, reward, done, info = envs.step(cpu_actions)
-
             reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
             episode_rewards += reward
 
@@ -115,17 +121,24 @@ def main():
 
             if args.cuda:
                 masks = masks.cuda()
-            current_state *= masks.unsqueeze(2).unsqueeze(2)
+
+            if current_state.dim() == 4:
+                current_state *= masks.unsqueeze(2).unsqueeze(2)
+            else:
+                current_state *= masks
 
             update_current_state(state)
             rollouts.insert(step, current_state, action.data, value.data, reward, masks)
 
         next_value = actor_critic(Variable(rollouts.states[-1], volatile=True))[0].data
 
+        if hasattr(actor_critic, 'obs_filter'):
+            actor_critic.obs_filter.update(rollouts.states[:-1].view(-1, *obs_shape))
+
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
         if args.algo in ['a2c', 'acktr']:
-            values, action_log_probs, dist_entropy = actor_critic.evaluate_actions(Variable(rollouts.states[:-1].view(-1, *obs_shape)), Variable(rollouts.actions.view(-1, 1)))
+            values, action_log_probs, dist_entropy = actor_critic.evaluate_actions(Variable(rollouts.states[:-1].view(-1, *obs_shape)), Variable(rollouts.actions.view(-1, action_shape)))
 
             values = values.view(args.num_steps, args.num_processes, 1)
             action_log_probs = action_log_probs.view(args.num_steps, args.num_processes, 1)
@@ -164,6 +177,8 @@ def main():
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-5)
 
             old_model.load_state_dict(actor_critic.state_dict())
+            if hasattr(actor_critic, 'obs_filter'):
+                old_model.obs_filter = actor_critic.obs_filter
 
             for _ in range(args.ppo_epoch):
                 sampler = BatchSampler(SubsetRandomSampler(range(args.num_processes * args.num_steps)), args.batch_size * args.num_processes, drop_last=False)
@@ -171,8 +186,8 @@ def main():
                     indices = torch.LongTensor(indices)
                     if args.cuda:
                         indices = indices.cuda()
-                    states_batch = rollouts.states[:-1].view(-1, *rollouts.states.size()[-3:])[indices]
-                    actions_batch = rollouts.actions.view(-1, 1)[indices]
+                    states_batch = rollouts.states[:-1].view(-1, *obs_shape)[indices]
+                    actions_batch = rollouts.actions.view(-1, action_shape)[indices]
                     return_batch = rollouts.returns[:-1].view(-1, 1)[indices]
 
                     # Reshape to do in a single forward pass for all steps
@@ -183,7 +198,7 @@ def main():
                     ratio = torch.exp(action_log_probs - Variable(old_action_log_probs.data))
                     adv_targ = Variable(advantages.view(-1, 1)[indices])
                     surr1 = ratio * adv_targ
-                    surr2 = ratio.clamp(1.0 - args.clip_param, 1.0 + args.clip_param) * adv_targ
+                    surr2 = torch.clamp(ratio, 1.0 - args.clip_param, 1.0 + args.clip_param) * adv_targ
                     action_loss = -torch.min(surr1, surr2).mean() # PPO's pessimistic surrogate (L^CLIP)
 
                     value_loss = (Variable(return_batch) - values).pow(2).mean()

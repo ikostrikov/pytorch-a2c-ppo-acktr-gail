@@ -11,8 +11,6 @@ import torch.optim as optim
 
 
 def _extract_patches(x, kernel_size, stride, padding):
-    #result = P.im2col(Variable(x), kernel_size, stride, padding).data
-    #return result.view(result.size(0), -1, result.size(-2), result.size(-1))
     if padding[0] + padding[1] > 0:
         x = F.pad(x, (padding[1], padding[1], padding[0],
                       padding[0])).data  # Actually check dims
@@ -164,7 +162,6 @@ class KFACOptimizer(optim.Optimizer):
                 raise NotImplementedError(
                     'Layer {} is not supported'.format(classname))
 
-    #@profile
     def step(self):
         # Add weight decay
         if self.weight_decay > 0:
@@ -187,10 +184,12 @@ class KFACOptimizer(optim.Optimizer):
                     self.m_aa[m].cpu().double(), eigenvectors=True)
                 self.d_g[m], self.Q_g[m] = torch.symeig(
                     self.m_gg[m].cpu().double(), eigenvectors=True)
-                self.d_a[m], self.Q_a[m] = self.d_a[
-                    m].float().cuda(), self.Q_a[m].float().cuda()
-                self.d_g[m], self.Q_g[m] = self.d_g[
-                    m].float().cuda(), self.Q_g[m].float().cuda()
+                self.d_a[m], self.Q_a[m] = self.d_a[m].float(), self.Q_a[m].float()
+                self.d_g[m], self.Q_g[m] = self.d_g[m].float(), self.Q_g[m].float()
+                if self.m_aa[m].is_cuda:
+                    self.d_a[m], self.Q_a[m] = self.d_a[m].cuda(), self.Q_a[m].cuda()
+                    self.d_g[m], self.Q_g[m] = self.d_g[m].cuda(), self.Q_g[m].cuda()
+
                 self.d_a[m].mul_((self.d_a[m] > 1e-6).float())
                 self.d_g[m].mul_((self.d_g[m] > 1e-6).float())
 

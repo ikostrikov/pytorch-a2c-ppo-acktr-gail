@@ -4,7 +4,7 @@ import gym
 from gym.spaces.box import Box
 
 from baselines import bench
-from baselines.common.atari_wrappers import *
+from baselines.common.atari_wrappers import wrap_deepmind
 
 
 def make_env(env_id, seed, rank, log_dir):
@@ -14,8 +14,10 @@ def make_env(env_id, seed, rank, log_dir):
         env = bench.Monitor(env,
                             os.path.join(log_dir,
                                          "{}.monitor.json".format(rank)))
-        env = wrap_deepmind(env)
-        env = WrapPyTorch(env)
+        # Ugly hack to detect atari.
+        if env.action_space.__class__.__name__ == 'Discrete':
+            env = wrap_deepmind(env)
+            env = WrapPyTorch(env)
         return env
 
     return _thunk
