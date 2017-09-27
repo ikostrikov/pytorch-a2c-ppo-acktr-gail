@@ -68,18 +68,32 @@ ACKTR requires some modifications to be made specifically for MuJoCo. But at the
 
 ### A2C
 
-![BreakoutNoFrameskip-v4](imgs/breakout.png)
+![BreakoutNoFrameskip-v4](imgs/a2c_breakout.png)
 
-![SeaquestNoFrameskip-v4](imgs/seaquest.png)
+![SeaquestNoFrameskip-v4](imgs/a2c_seaquest.png)
 
-![QbertNoFrameskip-v4](imgs/qbert.png)
+![QbertNoFrameskip-v4](imgs/a2c_qbert.png)
 
-![beamriderNoFrameskip-v4](imgs/beamrider.png)
+![beamriderNoFrameskip-v4](imgs/a2c_beamrider.png)
 
 ### PPO
 
-Coming soon.
+
+![BreakoutNoFrameskip-v4](imgs/ppo_halfcheetah.png)
+
+![SeaquestNoFrameskip-v4](imgs/ppo_hopper.png)
+
+![QbertNoFrameskip-v4](imgs/ppo_reacher.png)
+
+![beamriderNoFrameskip-v4](imgs/ppo_walker.png)
+
 
 ### ACKTR
 
-Coming soon.
+![BreakoutNoFrameskip-v4](imgs/acktr_breakout.png)
+
+![SeaquestNoFrameskip-v4](imgs/acktr_seaquest.png)
+
+![QbertNoFrameskip-v4](imgs/acktr_qbert.png)
+
+![beamriderNoFrameskip-v4](imgs/acktr_beamrider.png)
