@@ -9,7 +9,11 @@ from baselines.common.atari_wrappers import wrap_deepmind
 
 def make_env(env_id, seed, rank, log_dir):
     def _thunk():
-        env = gym.make(env_id)
+        if env_id.find('Bullet') > -1:
+            import pybullet_envs
+            env = pybullet_envs.make(env_id)
+        else:
+            env = gym.make(env_id)
         env.seed(seed + rank)
         env = bench.Monitor(env,
                             os.path.join(log_dir,

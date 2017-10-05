@@ -26,7 +26,15 @@ It's extremely difficult to reproduce results for Reinforcement Learning methods
 * Improve performance of KFAC, see kfac.py for more information
 * Run evaluation for all games and algorithms
 
+## Requirements
+
+* [PyTorch](http://pytorch.org/)
+* [Visdom](https://github.com/facebookresearch/visdom)
+* [OpenAI baselines](https://github.com/openai/baselines)
+
 ## Usage
+
+Start a `Visdom` server with `python -m visdom.server`, it will serve `http://localhost:8097/` by default.
 
 ### Atari
 #### A2C
