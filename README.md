@@ -1,6 +1,6 @@
 # pytorch-a2c-ppo-acktr
 
-## Update ##/##/####: added enjoy.py and a link to pretrained models!
+## Update 10/06/2017: added enjoy.py and a link to pretrained models!
 ## Update 09/27/2017: now supports both Atari and MuJoCo/Roboschool!
 
 This is a PyTorch implementation of
