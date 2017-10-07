@@ -1,5 +1,6 @@
 # pytorch-a2c-ppo-acktr
 
+## Update ##/##/####: added enjoy.py and a link to pretrained models!
 ## Update 09/27/2017: now supports both Atari and MuJoCo/Roboschool!
 
 This is a PyTorch implementation of
@@ -32,7 +33,7 @@ It's extremely difficult to reproduce results for Reinforcement Learning methods
 * [Visdom](https://github.com/facebookresearch/visdom)
 * [OpenAI baselines](https://github.com/openai/baselines)
 
-## Usage
+## Training
 
 Start a `Visdom` server with `python -m visdom.server`, it will serve `http://localhost:8097/` by default.
 
@@ -71,6 +72,24 @@ python main.py --env-name "Reacher-v1" --algo ppo --use-gae --vis-interval 1  --
 #### ACKTR
 
 ACKTR requires some modifications to be made specifically for MuJoCo. But at the moment, I want to keep this code as unified as possible. Thus, I'm going for better ways to integrate it into the codebase.
+
+## Enjoy
+
+Load a pretrained model from [my Google Drive](https://drive.google.com/open?id=0Bw49qC_cgohKS3k2OWpyMWdzYkk).
+
+Disclaimer: I might have used different hyper-parameters to train these models.
+
+### Atari
+
+```
+python main.py --load-dir trained_models/a2c --env-name "PongNoFrameskip-v4" --num-stack 4
+```
+
+### MuJoCo
+
+```
+python main.py --load-dir trained_models/ppo --env-name "Reacher-v1" --num-stack 1
+```
 
 ## Results
 

@@ -209,6 +209,19 @@ def main():
 
         rollouts.states[0].copy_(rollouts.states[-1])
 
+        if j % args.save_interval == 0 and args.save_dir != "":
+            save_path = os.path.join(args.save_dir, args.algo)
+            try:
+                os.makedirs(save_path)
+            except OSError:
+                pass
+
+            # A really ugly way to save a model to CPU
+            save_model = actor_critic
+            if args.cuda:
+                save_model = copy.deepcopy(actor_critic).cpu()
+            torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
+
         if j % args.log_interval == 0:
             print("Updates {}, num frames {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
                 format(j, j * args.num_processes * args.num_steps,

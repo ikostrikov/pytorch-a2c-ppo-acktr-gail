@@ -6,11 +6,15 @@ from gym.spaces.box import Box
 from baselines import bench
 from baselines.common.atari_wrappers import wrap_deepmind
 
+try:
+    import pybullet_envs
+except ImportError:
+    pass
+
 
 def make_env(env_id, seed, rank, log_dir):
     def _thunk():
         if env_id.find('Bullet') > -1:
-            import pybullet_envs
             env = pybullet_envs.make(env_id)
         else:
             env = gym.make(env_id)

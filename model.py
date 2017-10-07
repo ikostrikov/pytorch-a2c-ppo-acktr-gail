@@ -81,10 +81,13 @@ class CNNPolicy(torch.nn.Module):
         return self.ab_fc2(self.critic_linear(x)), self.ab_fc3(
             self.actor_linear(x))
 
-    def act(self, inputs):
+    def act(self, inputs, deterministic=False):
         value, logits = self(inputs)
         probs = F.softmax(logits)
-        action = probs.multinomial()
+        if deterministic is False:
+            action = probs.multinomial()
+        else:
+            action = probs.max(1)[1]
         return value, action
 
     def evaluate_actions(self, inputs, actions):
@@ -147,6 +150,10 @@ class MLPPolicy(torch.nn.Module):
         super(MLPPolicy, self).cuda(**args)
         self.obs_filter.cuda()
 
+    def cpu(self, **args):
+        super(MLPPolicy, self).cpu(**args)
+        self.obs_filter.cpu()
+
     def forward(self, inputs):
         inputs.data = self.obs_filter(inputs.data)
 
@@ -184,7 +191,7 @@ class MLPPolicy(torch.nn.Module):
 
         return value, action_mean, action_logstd
 
-    def act(self, inputs):
+    def act(self, inputs, deterministic=False):
         value, action_mean, action_logstd = self(inputs)
 
         action_std = action_logstd.exp()
@@ -193,7 +200,10 @@ class MLPPolicy(torch.nn.Module):
         if action_std.is_cuda:
             noise = noise.cuda()
 
-        action = action_mean + action_std * noise
+        if deterministic is False:
+            action = action_mean + action_std * noise
+        else:
+            action = action_mean
         return value, action
 
     def evaluate_actions(self, inputs, actions):

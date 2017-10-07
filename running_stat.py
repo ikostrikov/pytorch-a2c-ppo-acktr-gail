@@ -23,6 +23,14 @@ class ObsNorm(object):
         self.mean = self.mean.cuda()
         self.std = self.std.cuda()
 
+    def cpu(self):
+        self.count = self.count.cpu()
+        self.sum = self.sum.cpu()
+        self.sum_sqr = self.sum_sqr.cpu()
+
+        self.mean = self.mean.cpu()
+        self.std = self.std.cpu()
+
     def update(self, x):
         self.count += x.size(0)
         self.sum += x.sum(0, keepdim=True).double()
