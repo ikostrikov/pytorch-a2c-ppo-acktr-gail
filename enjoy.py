@@ -24,6 +24,11 @@ parser.add_argument('--log-dir', default='/tmp/gym/',
                     help='directory to save agent logs (default: /tmp/gym)')
 args = parser.parse_args()
 
+try:
+    os.makedirs(args.log_dir)
+except OSError:
+    pass
+
 env = make_env(args.env_name, args.seed, 0, args.log_dir)()
 
 actor_critic = torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
