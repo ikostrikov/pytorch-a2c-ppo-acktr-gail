@@ -82,13 +82,13 @@ Disclaimer: I might have used different hyper-parameters to train these models.
 ### Atari
 
 ```
-python main.py --load-dir trained_models/a2c --env-name "PongNoFrameskip-v4" --num-stack 4
+python enjoy.py --load-dir trained_models/a2c --env-name "PongNoFrameskip-v4" --num-stack 4
 ```
 
 ### MuJoCo
 
 ```
-python main.py --load-dir trained_models/ppo --env-name "Reacher-v1" --num-stack 1
+python enjoy.py --load-dir trained_models/ppo --env-name "Reacher-v1" --num-stack 1
 ```
 
 ## Results
