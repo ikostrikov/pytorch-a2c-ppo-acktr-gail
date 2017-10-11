@@ -14,6 +14,7 @@ This implementation is inspired by the OpenAI baselines for [A2C](https://github
 
 ## Requirements
 
+* Python 3 (it might work with Python 2, but I didn't test it)
 * [PyTorch](http://pytorch.org/)
 * [Visdom](https://github.com/facebookresearch/visdom)
 * [OpenAI baselines](https://github.com/openai/baselines)
