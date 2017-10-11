@@ -12,6 +12,23 @@ Also see the OpenAI posts: [A2C/ACKTR](https://blog.openai.com/baselines-acktr-a
 
 This implementation is inspired by the OpenAI baselines for [A2C](https://github.com/openai/baselines/tree/master/baselines/a2c), [ACKTR](https://github.com/openai/baselines/tree/master/baselines/acktr) and [PPO](https://github.com/openai/baselines/tree/master/baselines/ppo1). It uses the same hyper parameters and the model since they were well tuned for Atari games.
 
+## Requirements
+
+In order to install requirements, follow:
+
+```bash
+# PyTorch
+conda install pytorch torchvision -c soumith
+
+# Baselines for Atari preprocessing
+git clone https://github.com/openai/baselines.git
+cd baselines
+pip install -e .
+
+# Other requirements
+pip install -r requirements.txt
+```
+
 ## Contributions
 
 Contributions are very welcome. If you know how to make this code better, don't hesitate to send a pull request. Also see a todo list below.
@@ -40,32 +57,32 @@ Start a `Visdom` server with `python -m visdom.server`, it will serve `http://lo
 ### Atari
 #### A2C
 
-```
+```bash
 python main.py --env-name "PongNoFrameskip-v4"
 ```
 
 #### PPO
 
-```
+```bash
 python main.py --env-name "PongNoFrameskip-v4" --algo ppo --use-gae --num-processes 8 --num-steps 256 --vis-interval 1 --log-interval 1
 ```
 
 #### ACKTR
 
-```
+```bash
 python main.py --env-name "PongNoFrameskip-v4" --algo acktr --num-processes 32 --num-steps 20
 ```
 
 ### MuJoCo
 #### A2C
 
-```
+```bash
 python main.py --env-name "Reacher-v1" --num-stack 1 --num-frames 1000000
 ```
 
 #### PPO
 
-```
+```bash
 python main.py --env-name "Reacher-v1" --algo ppo --use-gae --vis-interval 1  --log-interval 1 --num-stack 1 --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --ppo-epoch 10 --batch-size 64 --gamma 0.99 --tau 0.95 --num-frames 1000000
 ```
 
@@ -81,13 +98,13 @@ Disclaimer: I might have used different hyper-parameters to train these models.
 
 ### Atari
 
-```
+```bash
 python enjoy.py --load-dir trained_models/a2c --env-name "PongNoFrameskip-v4" --num-stack 4
 ```
 
 ### MuJoCo
 
-```
+```bash
 python enjoy.py --load-dir trained_models/ppo --env-name "Reacher-v1" --num-stack 1
 ```
 
