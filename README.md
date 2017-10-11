@@ -14,6 +14,10 @@ This implementation is inspired by the OpenAI baselines for [A2C](https://github
 
 ## Requirements
 
+* [PyTorch](http://pytorch.org/)
+* [Visdom](https://github.com/facebookresearch/visdom)
+* [OpenAI baselines](https://github.com/openai/baselines)
+
 In order to install requirements, follow:
 
 ```bash
@@ -43,12 +47,6 @@ It's extremely difficult to reproduce results for Reinforcement Learning methods
 * Improve this README file. Rearrange images.
 * Improve performance of KFAC, see kfac.py for more information
 * Run evaluation for all games and algorithms
-
-## Requirements
-
-* [PyTorch](http://pytorch.org/)
-* [Visdom](https://github.com/facebookresearch/visdom)
-* [OpenAI baselines](https://github.com/openai/baselines)
 
 ## Training
 
