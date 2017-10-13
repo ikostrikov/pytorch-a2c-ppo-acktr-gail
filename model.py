@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 from running_stat import ObsNorm
+from utils import AddBias
 
 
 def weights_init(m):
@@ -13,21 +14,6 @@ def weights_init(m):
         nn.init.orthogonal(m.weight.data)
         if m.bias is not None:
             m.bias.data.fill_(0)
-
-
-# Necessary for my KFAC implementation.
-class AddBias(nn.Module):
-    def __init__(self, out_features):
-        super(AddBias, self).__init__()
-        self.bias = nn.Parameter(torch.zeros(out_features, 1))
-
-    def forward(self, x):
-        if x.dim() == 2:
-            bias = self.bias.t().view(1, -1)
-        else:
-            bias = self.bias.t().view(1, -1, 1, 1)
-
-        return x + bias
 
 
 class CNNPolicy(torch.nn.Module):
@@ -112,6 +98,7 @@ def weights_init_mlp(m):
         m.weight.data *= 1 / torch.sqrt(m.weight.data.pow(2).sum(1, keepdim=True))
         if m.bias is not None:
             m.bias.data.fill_(0)
+
 
 class MLPPolicy(torch.nn.Module):
     def __init__(self, num_inputs, action_space):
