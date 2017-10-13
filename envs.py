@@ -20,7 +20,7 @@ def make_env(env_id, seed, rank, log_dir):
                             os.path.join(log_dir,
                                          "{}.monitor.json".format(rank)))
         # Ugly hack to detect atari.
-        if env.action_space.__class__.__name__ == 'Discrete':
+        if hasattr(env.env, 'env') and hasattr(env.env.env, 'ale'):
             env = wrap_deepmind(env)
             env = WrapPyTorch(env)
         return env
