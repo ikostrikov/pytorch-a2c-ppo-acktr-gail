@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 from running_stat import ObsNorm
+from distributions import Categorical, DiagGaussian
 from utils import AddBias
 
 
@@ -16,7 +17,25 @@ def weights_init(m):
             m.bias.data.fill_(0)
 
 
-class CNNPolicy(torch.nn.Module):
+class FFPolicy(nn.Module):
+    def __init__(self):
+        super(FFPolicy, self).__init__()
+
+    def forward(self, x):
+        raise NotImplementedError
+
+    def act(self, inputs, deterministic=False):
+        value, x = self(inputs)
+        action = self.dist.sample(x, deterministic=deterministic)
+        return value, action
+
+    def evaluate_actions(self, inputs, actions):
+        value, x = self(inputs)
+        action_log_probs, dist_entropy = self.dist.evaluate_actions(x, actions)
+        return value, action_log_probs, dist_entropy
+
+
+class CNNPolicy(FFPolicy):
     def __init__(self, num_inputs, action_space):
         super(CNNPolicy, self).__init__()
         self.conv1 = nn.Conv2d(num_inputs, 32, 8, stride=4, bias=False)
@@ -32,9 +51,14 @@ class CNNPolicy(torch.nn.Module):
         self.critic_linear = nn.Linear(512, 1, bias=False)
         self.ab_fc2 = AddBias(1)
 
-        num_outputs = action_space.n
-        self.actor_linear = nn.Linear(512, num_outputs, bias=False)
-        self.ab_fc3 = AddBias(num_outputs)
+        if action_space.__class__.__name__ == "Discrete":
+            num_outputs = action_space.n
+            self.dist = Categorical(512, num_outputs)
+        elif action_space.__class__.__name__ == "Box":
+            num_outputs = action_space.shape[0]
+            self.dist = DiagGaussian(512, num_outputs)
+        else:
+            raise NotImplementedError
 
         self.apply(weights_init)
 
@@ -43,6 +67,9 @@ class CNNPolicy(torch.nn.Module):
         self.conv2.weight.data.mul_(relu_gain)
         self.conv3.weight.data.mul_(relu_gain)
         self.linear1.weight.data.mul_(relu_gain)
+
+        if action_space.__class__.__name__ == "Box":
+            self.dist.fc_mean.weight.data.mul_(0.01)
 
         self.train()
 
@@ -64,31 +91,7 @@ class CNNPolicy(torch.nn.Module):
         x = self.ab_fc1(x)
         x = F.relu(x)
 
-        return self.ab_fc2(self.critic_linear(x)), self.ab_fc3(
-            self.actor_linear(x))
-
-    def act(self, inputs, deterministic=False):
-        value, logits = self(inputs)
-        probs = F.softmax(logits)
-        if deterministic is False:
-            action = probs.multinomial()
-        else:
-            action = probs.max(1)[1]
-        return value, action
-
-    def evaluate_actions(self, inputs, actions):
-        assert inputs.dim() == 4, "Expect to have inputs in num_processes * num_steps x ... format"
-
-        values, logits = self(inputs)
-
-        log_probs = F.log_softmax(logits)
-        probs = F.softmax(logits)
-
-        action_log_probs = log_probs.gather(1, actions)
-
-        dist_entropy = -(log_probs * probs).sum(-1).mean()
-
-        return values, action_log_probs, dist_entropy
+        return self.ab_fc2(self.critic_linear(x)), x
 
 
 def weights_init_mlp(m):
@@ -100,7 +103,7 @@ def weights_init_mlp(m):
             m.bias.data.fill_(0)
 
 
-class MLPPolicy(torch.nn.Module):
+class MLPPolicy(FFPolicy):
     def __init__(self, num_inputs, action_space):
         super(MLPPolicy, self).__init__()
 
@@ -111,9 +114,6 @@ class MLPPolicy(torch.nn.Module):
         self.a_ab1 = AddBias(64)
         self.a_fc2 = nn.Linear(64, 64, bias=False)
         self.a_ab2 = AddBias(64)
-        self.a_fc_mean = nn.Linear(64, action_space.shape[0], bias=False)
-        self.a_ab_mean = AddBias(action_space.shape[0])
-        self.a_ab_logstd = AddBias(action_space.shape[0])
 
         self.v_fc1 = nn.Linear(num_inputs, 64, bias=False)
         self.v_ab1 = AddBias(64)
@@ -122,14 +122,25 @@ class MLPPolicy(torch.nn.Module):
         self.v_fc3 = nn.Linear(64, 1, bias=False)
         self.v_ab3 = AddBias(1)
 
+        if action_space.__class__.__name__ == "Discrete":
+            num_outputs = action_space.n
+            self.dist = Categorical(64, num_outputs)
+        elif action_space.__class__.__name__ == "Box":
+            num_outputs = action_space.shape[0]
+            self.dist = DiagGaussian(64, num_outputs)
+        else:
+            raise NotImplementedError
+
         self.apply(weights_init_mlp)
 
         tanh_gain = nn.init.calculate_gain('tanh')
         #self.a_fc1.weight.data.mul_(tanh_gain)
         #self.a_fc2.weight.data.mul_(tanh_gain)
-        self.a_fc_mean.weight.data.mul_(0.01)
         #self.v_fc1.weight.data.mul_(tanh_gain)
         #self.v_fc2.weight.data.mul_(tanh_gain)
+
+        if action_space.__class__.__name__ == "Box":
+            self.dist.fc_mean.weight.data.mul_(0.01)
 
         self.train()
 
@@ -164,45 +175,4 @@ class MLPPolicy(torch.nn.Module):
         x = self.a_ab2(x)
         x = F.tanh(x)
 
-        x = self.a_fc_mean(x)
-        x = self.a_ab_mean(x)
-        action_mean = x
-
-        #  An ugly hack for my KFAC implementation.
-        zeros = Variable(torch.zeros(x.size()), volatile=x.volatile)
-        if x.is_cuda:
-            zeros = zeros.cuda()
-
-        x = self.a_ab_logstd(zeros)
-        action_logstd = x
-
-        return value, action_mean, action_logstd
-
-    def act(self, inputs, deterministic=False):
-        value, action_mean, action_logstd = self(inputs)
-
-        action_std = action_logstd.exp()
-
-        noise = Variable(torch.randn(action_std.size()))
-        if action_std.is_cuda:
-            noise = noise.cuda()
-
-        if deterministic is False:
-            action = action_mean + action_std * noise
-        else:
-            action = action_mean
-        return value, action
-
-    def evaluate_actions(self, inputs, actions):
-        assert inputs.dim() == 2, "Expect to have inputs in num_processes * num_steps x ... format"
-
-        value, action_mean, action_logstd = self(inputs)
-
-        action_std = action_logstd.exp()
-
-        action_log_probs = -0.5 * ((actions - action_mean) / action_std).pow(2) - 0.5 * math.log(2 * math.pi) - action_logstd
-        action_log_probs = action_log_probs.sum(1, keepdim=True)
-        dist_entropy = 0.5 + math.log(2 * math.pi) + action_log_probs
-        dist_entropy = dist_entropy.sum(-1).mean()
-
-        return value, action_log_probs, dist_entropy
+        return value, x

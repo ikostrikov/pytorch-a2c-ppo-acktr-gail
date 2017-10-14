@@ -149,7 +149,7 @@ class KFACOptimizer(optim.Optimizer):
             update_running_stat(gg, self.m_gg[module], self.stat_decay)
 
     def _prepare_model(self):
-        for module in self.model.children():
+        for module in self.model.modules():
             classname = module.__class__.__name__
             if classname in self.known_modules:
                 assert not ((classname in ['Linear', 'Conv2d']) and module.bias is not None), \
@@ -159,8 +159,7 @@ class KFACOptimizer(optim.Optimizer):
                 module.register_forward_pre_hook(self._save_input)
                 module.register_backward_hook(self._save_grad_output)
             elif len(list(module.parameters())) > 0:
-                raise NotImplementedError(
-                    'Layer {} is not supported'.format(classname))
+                print('Layer {} might not be supported'.format(classname))
 
     def step(self):
         # Add weight decay
