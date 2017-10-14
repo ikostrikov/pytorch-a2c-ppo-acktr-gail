@@ -2,6 +2,7 @@ import math
 
 import torch
 import torch.optim as optim
+import torch.nn.functional as F
 
 
 # TODO: In order to make this code faster:
