@@ -16,8 +16,10 @@ This implementation is inspired by the OpenAI baselines for [A2C](https://github
 * [Atari Learning Environment](https://github.com/mgbellemare/Arcade-Learning-Environment)
 * [MuJoCo](http://mujoco.org)
 * [PyBullet](http://pybullet.org) (including Racecar, Minitaur and Kuka)
- 
- All environments are operated using exactly the same Gym interface. See their documentations for a comprehensive list.
+
+I highly recommend PyBullet as a free open source alternative to MuJoCo for continuous control tasks.
+
+All environments are operated using exactly the same Gym interface. See their documentations for a comprehensive list.
  
 ## Requirements
 
