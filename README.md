@@ -12,6 +12,13 @@ Also see the OpenAI posts: [A2C/ACKTR](https://blog.openai.com/baselines-acktr-a
 
 This implementation is inspired by the OpenAI baselines for [A2C](https://github.com/openai/baselines/tree/master/baselines/a2c), [ACKTR](https://github.com/openai/baselines/tree/master/baselines/acktr) and [PPO](https://github.com/openai/baselines/tree/master/baselines/ppo1). It uses the same hyper parameters and the model since they were well tuned for Atari games.
 
+## Supported (and tested) environments (via [OpenAI Gym](https://gym.openai.com))
+* [Atari Learning Environment](https://github.com/mgbellemare/Arcade-Learning-Environment)
+* [MuJoCo](http://mujoco.org)
+* [PyBullet](http://pybullet.org) (including Racecar, Minitaur and Kuka)
+ 
+ All environments are operated using exactly the same Gym interface. See their documentations for a comprehensive list.
+ 
 ## Requirements
 
 * Python 3 (it might work with Python 2, but I didn't test it)
