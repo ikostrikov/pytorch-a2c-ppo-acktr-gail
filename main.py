@@ -59,11 +59,14 @@ def main():
     obs_shape = envs.observation_space.shape
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
-    if envs.action_space.__class__.__name__ == 'Discrete':
+    if len(envs.observation_space.shape) == 3:
         actor_critic = CNNPolicy(obs_shape[0], envs.action_space)
-        action_shape = 1
     else:
         actor_critic = MLPPolicy(obs_shape[0], envs.action_space)
+
+    if envs.action_space.__class__.__name__ == "Discrete":
+        action_shape = 1
+    else:
         action_shape = envs.action_space.shape[0]
 
     if args.cuda:
@@ -106,7 +109,7 @@ def main():
         for step in range(args.num_steps):
             # Sample actions
             value, action = actor_critic.act(Variable(rollouts.states[step], volatile=True))
-            cpu_actions = action.data.cpu().numpy()
+            cpu_actions = action.data.squeeze(1).cpu().numpy()
 
             # Obser reward and next state
             state, reward, done, info = envs.step(cpu_actions)
@@ -224,7 +227,7 @@ def main():
 
         if j % args.log_interval == 0:
             print("Updates {}, num frames {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
-                format(j, j * args.num_processes * args.num_steps,
+                format(j, (j + 1) * args.num_processes * args.num_steps,
                        final_rewards.mean(),
                        final_rewards.median(),
                        final_rewards.min(),
