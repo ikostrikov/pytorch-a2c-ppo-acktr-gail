@@ -2,8 +2,9 @@ import math
 
 import torch
 import torch.optim as optim
+import torch.nn as nn
 import torch.nn.functional as F
-
+from utils import AddBias
 
 # TODO: In order to make this code faster:
 # 1) Implement _extract_patches as a single cuda kernel
@@ -68,6 +69,19 @@ def update_running_stat(aa, m_aa, momentum):
     m_aa *= (1 - momentum)
 
 
+class SplitBias(nn.Module):
+    def __init__(self, module):
+        super(SplitBias, self).__init__()
+        self.module = module
+        self.add_bias = AddBias(module.bias.data)
+        self.module.bias = None
+
+    def forward(self, input):
+        x = self.module(input)
+        x = self.add_bias(x)
+        return x
+
+
 class KFACOptimizer(optim.Optimizer):
     def __init__(self,
                  model,
@@ -81,6 +95,16 @@ class KFACOptimizer(optim.Optimizer):
                  Ts=1,
                  Tf=10):
         defaults = dict()
+
+        def split_bias(module):
+            for mname, child in module.named_children():
+                if hasattr(child, 'bias'):
+                    module._modules[mname] = SplitBias(child)
+                else:
+                    split_bias(child)
+
+        split_bias(model)
+            
         super(KFACOptimizer, self).__init__(model.parameters(), defaults)
 
         self.known_modules = {'Linear', 'Conv2d', 'AddBias'}
@@ -159,8 +183,6 @@ class KFACOptimizer(optim.Optimizer):
                 self.modules.append(module)
                 module.register_forward_pre_hook(self._save_input)
                 module.register_backward_hook(self._save_grad_output)
-            elif len(list(module.parameters())) > 0:
-                print('Layer {} might not be supported'.format(classname))
 
     def step(self):
         # Add weight decay

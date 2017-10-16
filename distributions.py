@@ -10,11 +10,10 @@ from utils import AddBias
 class Categorical(nn.Module):
     def __init__(self, num_inputs, num_outputs):
         super(Categorical, self).__init__()
-        self.linear = nn.Linear(num_inputs, num_outputs, bias=False)
-        self.ab = AddBias(num_outputs)
+        self.linear = nn.Linear(num_inputs, num_outputs)
 
     def forward(self, x):
-        x = self.ab(self.linear(x))
+        x = self.linear(x)
         return x
 
     def sample(self, x, deterministic):
@@ -42,13 +41,11 @@ class Categorical(nn.Module):
 class DiagGaussian(nn.Module):
     def __init__(self, num_inputs, num_outputs):
         super(DiagGaussian, self).__init__()
-        self.fc_mean = nn.Linear(64, num_outputs, bias=False)
-        self.ab_mean = AddBias(num_outputs)
-        self.ab_logstd = AddBias(num_outputs)
+        self.fc_mean = nn.Linear(64, num_outputs)
+        self.logstd = AddBias(torch.zeros(num_outputs))
 
     def forward(self, x):
         x = self.fc_mean(x)
-        x = self.ab_mean(x)
         action_mean = x
 
         #  An ugly hack for my KFAC implementation.
@@ -56,7 +53,7 @@ class DiagGaussian(nn.Module):
         if x.is_cuda:
             zeros = zeros.cuda()
 
-        x = self.ab_logstd(zeros)
+        x = self.logstd(zeros)
         action_logstd = x
         return action_mean, action_logstd
 
