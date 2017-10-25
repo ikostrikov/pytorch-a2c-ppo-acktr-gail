@@ -19,8 +19,7 @@ def make_env(env_id, seed, rank, log_dir):
         env = bench.Monitor(env,
                             os.path.join(log_dir,
                                          "{}.monitor.json".format(rank)))
-        # Ugly hack to detect atari.
-        if hasattr(env.env, 'env') and hasattr(env.env.env, 'ale'):
+        if isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv):
             env = wrap_deepmind(env)
             env = WrapPyTorch(env)
         return env
