@@ -1,6 +1,7 @@
 import copy
 import glob
 import os
+import time
 
 import gym
 import numpy as np
@@ -105,6 +106,7 @@ def main():
     if args.algo == 'ppo':
         old_model = copy.deepcopy(actor_critic)
 
+    start = time.time()
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
@@ -226,14 +228,16 @@ def main():
             torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
 
         if j % args.log_interval == 0:
-            print("Updates {}, num frames {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
-                format(j, (j + 1) * args.num_processes * args.num_steps,
+            end = time.time()
+            total_num_frames = (j + 1) * args.num_processes * args.num_steps
+            print("Updates {}, num frames {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
+                format(j, total_num_frames,
+                       int(total_num_frames / (end - start)),
                        final_rewards.mean(),
                        final_rewards.median(),
                        final_rewards.min(),
                        final_rewards.max(), -dist_entropy.data[0],
                        value_loss.data[0], action_loss.data[0]))
-
         if j % args.vis_interval == 0:
             win = visdom_plot(viz, win, args.log_dir, args.env_name, args.algo)
 
