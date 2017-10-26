@@ -132,14 +132,6 @@ class MLPPolicy(FFPolicy):
         if self.dist.__class__.__name__ == "DiagGaussian":
             self.dist.fc_mean.weight.data.mul_(0.01)
 
-    def cuda(self, **args):
-        super(MLPPolicy, self).cuda(**args)
-        self.obs_filter.cuda()
-
-    def cpu(self, **args):
-        super(MLPPolicy, self).cpu(**args)
-        self.obs_filter.cpu()
-
     def forward(self, inputs):
         inputs.data = self.obs_filter(inputs.data)
 
