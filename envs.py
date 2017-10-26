@@ -19,9 +19,7 @@ def make_env(env_id, seed, rank, log_dir):
         if is_atari:
             env = make_atari(env_id)
         env.seed(seed + rank)
-        env = bench.Monitor(env,
-                            os.path.join(log_dir,
-                                         "{}.monitor.json".format(rank)))
+        env = bench.Monitor(env, os.path.join(log_dir, str(rank)))
         if is_atari:
             env = wrap_deepmind(env)
             env = WrapPyTorch(env)
