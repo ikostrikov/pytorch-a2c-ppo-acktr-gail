@@ -229,10 +229,10 @@ def main():
 
         if j % args.log_interval == 0:
             end = time.time()
-            total_num_frames = (j + 1) * args.num_processes * args.num_steps
-            print("Updates {}, num frames {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
-                format(j, total_num_frames,
-                       int(total_num_frames / (end - start)),
+            total_num_steps = (j + 1) * args.num_processes * args.num_steps
+            print("Updates {}, num steps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
+                format(j, total_num_steps,
+                       int(total_num_steps / (end - start)),
                        final_rewards.mean(),
                        final_rewards.median(),
                        final_rewards.min(),
