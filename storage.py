@@ -3,7 +3,7 @@ import torch
 
 class RolloutStorage(object):
     def __init__(self, num_steps, num_processes, obs_shape, action_space):
-        self.states = torch.zeros(num_steps + 1, num_processes, *obs_shape)
+        self.observations = torch.zeros(num_steps + 1, num_processes, *obs_shape)
         self.rewards = torch.zeros(num_steps, num_processes, 1)
         self.value_preds = torch.zeros(num_steps + 1, num_processes, 1)
         self.returns = torch.zeros(num_steps + 1, num_processes, 1)
@@ -17,15 +17,15 @@ class RolloutStorage(object):
         self.masks = torch.ones(num_steps + 1, num_processes, 1)
 
     def cuda(self):
-        self.states = self.states.cuda()
+        self.observations = self.observations.cuda()
         self.rewards = self.rewards.cuda()
         self.value_preds = self.value_preds.cuda()
         self.returns = self.returns.cuda()
         self.actions = self.actions.cuda()
         self.masks = self.masks.cuda()
 
-    def insert(self, step, current_state, action, value_pred, reward, mask):
-        self.states[step + 1].copy_(current_state)
+    def insert(self, step, current_obs, action, value_pred, reward, mask):
+        self.observations[step + 1].copy_(current_obs)
         self.actions[step].copy_(action)
         self.value_preds[step].copy_(value_pred)
         self.rewards[step].copy_(reward)

@@ -36,19 +36,19 @@ actor_critic.eval()
 
 obs_shape = env.observation_space.shape
 obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
-current_state = torch.zeros(1, *obs_shape)
+current_obs = torch.zeros(1, *obs_shape)
 
 
-def update_current_state(state):
+def update_current_obs(obs):
     shape_dim0 = env.observation_space.shape[0]
-    state = torch.from_numpy(state).float()
+    obs = torch.from_numpy(obs).float()
     if args.num_stack > 1:
-        current_state[:, :-shape_dim0] = current_state[:, shape_dim0:]
-    current_state[:, -shape_dim0:] = state
+        current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
+    current_obs[:, -shape_dim0:] = obs
 
 env.render('human')
-state = env.reset()
-update_current_state(state)
+obs = env.reset()
+update_current_obs(obs)
 
 if args.env_name.find('Bullet') > -1:
     import pybullet as p
@@ -59,12 +59,12 @@ if args.env_name.find('Bullet') > -1:
             torsoId = i
 
 while True:
-    value, action = actor_critic.act(Variable(current_state, volatile=True),
+    value, action = actor_critic.act(Variable(current_obs, volatile=True),
                                         deterministic=True)
     cpu_actions = action.data.cpu().numpy()
 
-    # Obser reward and next state
-    state, _, done, _ = env.step(cpu_actions[0])
+    # Obser reward and next obs
+    obs, _, done, _ = env.step(cpu_actions[0])
 
     if args.env_name.find('Bullet') > -1:
         if torsoId > -1:
@@ -76,8 +76,8 @@ while True:
     env.render('human')
 
     if done:
-        state = env.reset()
+        obs = env.reset()
         actor_critic = torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
         actor_critic.eval()
 
-    update_current_state(state)
+    update_current_obs(obs)
