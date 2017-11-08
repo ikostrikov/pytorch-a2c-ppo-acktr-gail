@@ -52,15 +52,16 @@ def fix_point(x, y, interval):
 
 def load_data(indir, smooth, bin_size):
     datas = []
-    infiles = glob.glob(os.path.join(indir, '*monitor.json'))
+    infiles = glob.glob(os.path.join(indir, '*.monitor.csv'))
 
     for inf in infiles:
         with open(inf, 'r') as f:
-            t_start = float(json.loads(f.readline())['t_start'])
+            f.readline()
+            f.readline()
             for line in f:
-                tmp = json.loads(line)
-                t_time = float(tmp['t']) + t_start
-                tmp = [t_time, int(tmp['l']), float(tmp['r'])]
+                tmp = line.split(',')
+                t_time = float(tmp[2])
+                tmp = [t_time, int(tmp[1]), float(tmp[0])]
                 datas.append(tmp)
 
     datas = sorted(datas, key=lambda d_entry: d_entry[0])
@@ -109,9 +110,9 @@ def visdom_plot(viz, win, folder, game, name, bin_size=100, smooth=1):
 
     # Ugly hack to detect atari
     if game.find('NoFrameskip') > -1:
-        plt.xticks([4*1e6, 4*2e6, 4*4e6, 4*6e6, 4*8e6, 4*10e6],
+        plt.xticks([1e6, 2e6, 4e6, 6e6, 8e6, 10e6],
                    ["1M", "2M", "4M", "6M", "8M", "10M"])
-        plt.xlim(0, 40e6)
+        plt.xlim(0, 10e6)
     else:
         plt.xticks([1e5, 2e5, 4e5, 6e5, 8e5, 1e5],
                    ["0.1M", "0.2M", "0.4M", "0.6M", "0.8M", "1M"])

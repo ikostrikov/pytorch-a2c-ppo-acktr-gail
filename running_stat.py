@@ -1,35 +1,20 @@
-import random
-
 import torch
+import torch.nn as nn
 
-class ObsNorm(object):
+
+class ObsNorm(nn.Module):
     def __init__(self, shape, demean=True, destd=True, clip=10.0):
+        super(ObsNorm, self).__init__()
         self.demean = demean
         self.destd = destd
         self.clip = clip
 
-        self.count = torch.zeros(1).double() + 1e-2
-        self.sum = torch.zeros(shape).double()
-        self.sum_sqr = torch.zeros(shape).double() + 1e-2
+        self.register_buffer('count', torch.zeros(1).double() + 1e-2)
+        self.register_buffer('sum', torch.zeros(shape).double())
+        self.register_buffer('sum_sqr', torch.zeros(shape).double() + 1e-2)
 
-        self.mean = torch.zeros(shape)
-        self.std = torch.ones(shape)
-
-    def cuda(self):
-        self.count = self.count.cuda()
-        self.sum = self.sum.cuda()
-        self.sum_sqr = self.sum_sqr.cuda()
-
-        self.mean = self.mean.cuda()
-        self.std = self.std.cuda()
-
-    def cpu(self):
-        self.count = self.count.cpu()
-        self.sum = self.sum.cpu()
-        self.sum_sqr = self.sum_sqr.cpu()
-
-        self.mean = self.mean.cpu()
-        self.std = self.std.cpu()
+        self.register_buffer('mean', torch.zeros(shape),)
+        self.register_buffer('std', torch.ones(shape))
 
     def update(self, x):
         self.count += x.size(0)

@@ -1,6 +1,7 @@
 import copy
 import glob
 import os
+import time
 
 import gym
 import numpy as np
@@ -34,7 +35,7 @@ if args.cuda:
 try:
     os.makedirs(args.log_dir)
 except OSError:
-    files = glob.glob(os.path.join(args.log_dir, '*.monitor.json'))
+    files = glob.glob(os.path.join(args.log_dir, '*.monitor.csv'))
     for f in files:
         os.remove(f)
 
@@ -105,6 +106,7 @@ def main():
     if args.algo == 'ppo':
         old_model = copy.deepcopy(actor_critic)
 
+    start = time.time()
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
@@ -180,8 +182,6 @@ def main():
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-5)
 
             old_model.load_state_dict(actor_critic.state_dict())
-            if hasattr(actor_critic, 'obs_filter'):
-                old_model.obs_filter = actor_critic.obs_filter
 
             for _ in range(args.ppo_epoch):
                 sampler = BatchSampler(SubsetRandomSampler(range(args.num_processes * args.num_steps)), args.batch_size * args.num_processes, drop_last=False)
@@ -226,17 +226,22 @@ def main():
             torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
 
         if j % args.log_interval == 0:
-            print("Updates {}, num frames {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
-                format(j, (j + 1) * args.num_processes * args.num_steps,
+            end = time.time()
+            total_num_steps = (j + 1) * args.num_processes * args.num_steps
+            print("Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
+                format(j, total_num_steps,
+                       int(total_num_steps / (end - start)),
                        final_rewards.mean(),
                        final_rewards.median(),
                        final_rewards.min(),
                        final_rewards.max(), -dist_entropy.data[0],
                        value_loss.data[0], action_loss.data[0]))
-
-        if j % args.vis_interval == 0:
-            win = visdom_plot(viz, win, args.log_dir, args.env_name, args.algo)
-
+        if args.vis and j % args.vis_interval == 0:
+            try:
+                # Sometimes monitor doesn't properly flush the outputs
+                win = visdom_plot(viz, win, args.log_dir, args.env_name, args.algo)
+            except IOError:
+                pass
 
 if __name__ == "__main__":
     main()

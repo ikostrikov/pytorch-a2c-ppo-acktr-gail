@@ -27,7 +27,7 @@ class FFPolicy(nn.Module):
 
     def evaluate_actions(self, inputs, actions):
         value, x = self(inputs)
-        action_log_probs, dist_entropy = self.dist.evaluate_actions(x, actions)
+        action_log_probs, dist_entropy = self.dist.logprobs_and_entropy(x, actions)
         return value, action_log_probs, dist_entropy
 
 
@@ -131,14 +131,6 @@ class MLPPolicy(FFPolicy):
 
         if self.dist.__class__.__name__ == "DiagGaussian":
             self.dist.fc_mean.weight.data.mul_(0.01)
-
-    def cuda(self, **args):
-        super(MLPPolicy, self).cuda(**args)
-        self.obs_filter.cuda()
-
-    def cpu(self, **args):
-        super(MLPPolicy, self).cpu(**args)
-        self.obs_filter.cpu()
 
     def forward(self, inputs):
         inputs.data = self.obs_filter(inputs.data)
