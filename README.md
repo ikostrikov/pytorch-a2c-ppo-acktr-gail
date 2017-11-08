@@ -102,6 +102,8 @@ ACKTR requires some modifications to be made specifically for MuJoCo. But at the
 
 Load a pretrained model from [my Google Drive](https://drive.google.com/open?id=0Bw49qC_cgohKS3k2OWpyMWdzYkk).
 
+Also pretrained models for other games are available on request. Send me an email or create an issue, and I will upload it.
+
 Disclaimer: I might have used different hyper-parameters to train these models.
 
 ### Atari
