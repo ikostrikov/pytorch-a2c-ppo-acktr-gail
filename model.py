@@ -27,7 +27,7 @@ class FFPolicy(nn.Module):
 
     def evaluate_actions(self, inputs, actions):
         value, x = self(inputs)
-        action_log_probs, dist_entropy = self.dist.evaluate_actions(x, actions)
+        action_log_probs, dist_entropy = self.dist.logprobs_and_entropy(x, actions)
         return value, action_log_probs, dist_entropy
 
 

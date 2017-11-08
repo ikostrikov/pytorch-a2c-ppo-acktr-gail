@@ -26,7 +26,7 @@ class Categorical(nn.Module):
             action = probs.max(1)[1]
         return action
 
-    def evaluate_actions(self, x, actions):
+    def logprobs_and_entropy(self, x, actions):
         x = self(x)
 
         log_probs = F.log_softmax(x)
@@ -72,7 +72,7 @@ class DiagGaussian(nn.Module):
             action = action_mean
         return action
 
-    def evaluate_actions(self, x, actions):
+    def logprobs_and_entropy(self, x, actions):
         action_mean, action_logstd = self(x)
 
         action_std = action_logstd.exp()
