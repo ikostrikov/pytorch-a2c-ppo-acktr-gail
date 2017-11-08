@@ -41,7 +41,7 @@ class Categorical(nn.Module):
 class DiagGaussian(nn.Module):
     def __init__(self, num_inputs, num_outputs):
         super(DiagGaussian, self).__init__()
-        self.fc_mean = nn.Linear(64, num_outputs)
+        self.fc_mean = nn.Linear(num_inputs, num_outputs)
         self.logstd = AddBias(torch.zeros(num_outputs))
 
     def forward(self, x):
