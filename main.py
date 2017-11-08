@@ -182,8 +182,6 @@ def main():
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-5)
 
             old_model.load_state_dict(actor_critic.state_dict())
-            if hasattr(actor_critic, 'obs_filter'):
-                old_model.obs_filter = actor_critic.obs_filter
 
             for _ in range(args.ppo_epoch):
                 sampler = BatchSampler(SubsetRandomSampler(range(args.num_processes * args.num_steps)), args.batch_size * args.num_processes, drop_last=False)
