@@ -14,6 +14,7 @@ from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 
 from arguments import get_args
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+from baselines.common.vec_env.vec_normalize import VecNormalize
 from envs import make_env
 from kfac import KFACOptimizer
 from model import CNNPolicy, MLPPolicy
@@ -42,7 +43,7 @@ except OSError:
 
 def main():
     print("#######")
-    print("WARNING: All rewards are clipped so you need to use a monitor (see envs.py) or visdom plot to get true rewards")
+    print("WARNING: All rewards are clipped or normalized so you need to use a monitor (see envs.py) or visdom plot to get true rewards")
     print("#######")
 
     os.environ['OMP_NUM_THREADS'] = '1'
@@ -56,6 +57,9 @@ def main():
         make_env(args.env_name, args.seed, i, args.log_dir)
         for i in range(args.num_processes)
     ])
+
+    if len(envs.observation_space.shape) == 1:
+        envs = VecNormalize(envs)
 
     obs_shape = envs.observation_space.shape
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
@@ -136,9 +140,6 @@ def main():
             rollouts.insert(step, current_obs, action.data, value.data, reward, masks)
 
         next_value = actor_critic(Variable(rollouts.observations[-1], volatile=True))[0].data
-
-        if hasattr(actor_critic, 'obs_filter'):
-            actor_critic.obs_filter.update(rollouts.observations[:-1].view(-1, *obs_shape))
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 

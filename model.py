@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from running_stat import ObsNorm
 from distributions import Categorical, DiagGaussian
 
 # A temporary solution from the master branch.
@@ -124,7 +123,6 @@ class MLPPolicy(FFPolicy):
     def __init__(self, num_inputs, action_space):
         super(MLPPolicy, self).__init__()
 
-        self.obs_filter = ObsNorm((1, num_inputs), clip=5)
         self.action_space = action_space
 
         self.a_fc1 = nn.Linear(num_inputs, 64)
@@ -161,8 +159,6 @@ class MLPPolicy(FFPolicy):
             self.dist.fc_mean.weight.data.mul_(0.01)
 
     def forward(self, inputs):
-        inputs.data = self.obs_filter(inputs.data)
-
         x = self.v_fc1(inputs)
         x = F.tanh(x)
 
