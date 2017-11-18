@@ -20,7 +20,7 @@ This implementation is inspired by the OpenAI baselines for [A2C](https://github
 I highly recommend PyBullet as a free open source alternative to MuJoCo for continuous control tasks.
 
 All environments are operated using exactly the same Gym interface. See their documentations for a comprehensive list.
- 
+
 ## Requirements
 
 * Python 3 (it might work with Python 2, but I didn't test it)
@@ -72,7 +72,7 @@ python main.py --env-name "PongNoFrameskip-v4"
 #### PPO
 
 ```bash
-python main.py --env-name "PongNoFrameskip-v4" --algo ppo --use-gae --num-processes 8 --num-steps 256 --vis-interval 1 --log-interval 1
+python main.py --env-name "PongNoFrameskip-v4" --algo ppo --use-gae --num-processes 8 --num-steps 128 --num-mini-batch 4 --vis-interval 1 --log-interval 1
 ```
 
 #### ACKTR
@@ -91,7 +91,7 @@ python main.py --env-name "Reacher-v1" --num-stack 1 --num-frames 1000000
 #### PPO
 
 ```bash
-python main.py --env-name "Reacher-v1" --algo ppo --use-gae --vis-interval 1  --log-interval 1 --num-stack 1 --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --ppo-epoch 10 --batch-size 64 --gamma 0.99 --tau 0.95 --num-frames 1000000
+python main.py --env-name "Reacher-v1" --algo ppo --use-gae --vis-interval 1  --log-interval 1 --num-stack 1 --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-frames 1000000
 ```
 
 #### ACKTR

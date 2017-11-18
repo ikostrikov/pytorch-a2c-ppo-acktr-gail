@@ -33,8 +33,8 @@ def get_args():
                         help='number of forward steps in A2C (default: 5)')
     parser.add_argument('--ppo-epoch', type=int, default=4,
                         help='number of ppo epochs (default: 4)')
-    parser.add_argument('--batch-size', type=int, default=64,
-                        help='ppo batch size (default: 64)')
+    parser.add_argument('--num-mini-batch', type=int, default=32,
+                        help='number of batches for ppo (default: 32)')
     parser.add_argument('--clip-param', type=float, default=0.2,
                         help='ppo clip parameter (default: 0.2)')
     parser.add_argument('--num-stack', type=int, default=4,

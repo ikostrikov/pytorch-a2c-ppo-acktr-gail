@@ -25,8 +25,6 @@ from visualize import visdom_plot
 args = get_args()
 
 assert args.algo in ['a2c', 'ppo', 'acktr']
-if args.algo == 'ppo':
-    assert args.num_processes * args.num_steps % args.batch_size == 0
 
 num_updates = int(args.num_frames) // args.num_steps // args.num_processes
 
@@ -184,7 +182,9 @@ def main():
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-5)
 
             for e in range(args.ppo_epoch):
-                sampler = BatchSampler(SubsetRandomSampler(range(args.num_processes * args.num_steps)), args.batch_size * args.num_processes, drop_last=False)
+                batch_size = args.num_processes * args.num_steps
+                mini_batch_size = batch_size // args.num_mini_batch
+                sampler = BatchSampler(SubsetRandomSampler(range(batch_size)), mini_batch_size, drop_last=False)
                 for indices in sampler:
                     indices = torch.LongTensor(indices)
                     if args.cuda:
