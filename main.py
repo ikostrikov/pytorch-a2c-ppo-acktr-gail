@@ -13,6 +13,7 @@ from torch.autograd import Variable
 from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 
 from arguments import get_args
+from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
 from envs import make_env
@@ -53,10 +54,13 @@ def main():
         viz = Visdom()
         win = None
 
-    envs = SubprocVecEnv([
-        make_env(args.env_name, args.seed, i, args.log_dir)
-        for i in range(args.num_processes)
-    ])
+    envs = [make_env(args.env_name, args.seed, i, args.log_dir)
+                for i in range(args.num_processes)]
+
+    if args.num_processes > 1:
+        envs = SubprocVecEnv(envs)
+    else:
+        envs = DummyVecEnv(envs)
 
     if len(envs.observation_space.shape) == 1:
         envs = VecNormalize(envs)
