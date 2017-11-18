@@ -107,14 +107,11 @@ def main():
         current_obs = current_obs.cuda()
         rollouts.cuda()
 
-    if args.algo == 'ppo':
-        old_model = copy.deepcopy(actor_critic)
-
     start = time.time()
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
-            value, action = actor_critic.act(Variable(rollouts.observations[step], volatile=True))
+            value, action, action_log_prob = actor_critic.act(Variable(rollouts.observations[step], volatile=True))
             cpu_actions = action.data.squeeze(1).cpu().numpy()
 
             # Obser reward and next obs
@@ -137,7 +134,7 @@ def main():
                 current_obs *= masks
 
             update_current_obs(obs)
-            rollouts.insert(step, current_obs, action.data, value.data, reward, masks)
+            rollouts.insert(step, current_obs, action.data, action_log_prob.data, value.data, reward, masks)
 
         next_value = actor_critic(Variable(rollouts.observations[-1], volatile=True))[0].data
 
@@ -182,9 +179,7 @@ def main():
             advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-5)
 
-            old_model.load_state_dict(actor_critic.state_dict())
-
-            for _ in range(args.ppo_epoch):
+            for e in range(args.ppo_epoch):
                 sampler = BatchSampler(SubsetRandomSampler(range(args.num_processes * args.num_steps)), args.batch_size * args.num_processes, drop_last=False)
                 for indices in sampler:
                     indices = torch.LongTensor(indices)
@@ -193,13 +188,12 @@ def main():
                     observations_batch = rollouts.observations[:-1].view(-1, *obs_shape)[indices]
                     actions_batch = rollouts.actions.view(-1, action_shape)[indices]
                     return_batch = rollouts.returns[:-1].view(-1, 1)[indices]
+                    old_action_log_probs_batch = rollouts.action_log_probs.view(-1, 1)[indices]
 
                     # Reshape to do in a single forward pass for all steps
                     values, action_log_probs, dist_entropy = actor_critic.evaluate_actions(Variable(observations_batch), Variable(actions_batch))
 
-                    _, old_action_log_probs, _ = old_model.evaluate_actions(Variable(observations_batch, volatile=True), Variable(actions_batch, volatile=True))
-
-                    ratio = torch.exp(action_log_probs - Variable(old_action_log_probs.data))
+                    ratio = torch.exp(action_log_probs - Variable(old_action_log_probs_batch))
                     adv_targ = Variable(advantages.view(-1, 1)[indices])
                     surr1 = ratio * adv_targ
                     surr2 = torch.clamp(ratio, 1.0 - args.clip_param, 1.0 + args.clip_param) * adv_targ

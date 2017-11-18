@@ -59,7 +59,7 @@ if args.env_name.find('Bullet') > -1:
             torsoId = i
 
 while True:
-    value, action = actor_critic.act(Variable(current_obs, volatile=True),
+    value, action, _ = actor_critic.act(Variable(current_obs, volatile=True),
                                         deterministic=True)
     cpu_actions = action.data.cpu().numpy()
 
