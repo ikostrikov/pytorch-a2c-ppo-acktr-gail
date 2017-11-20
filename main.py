@@ -233,7 +233,7 @@ def main():
                        final_rewards.mean(),
                        final_rewards.median(),
                        final_rewards.min(),
-                       final_rewards.max(), -dist_entropy.data[0],
+                       final_rewards.max(), dist_entropy.data[0],
                        value_loss.data[0], action_loss.data[0]))
         if args.vis and j % args.vis_interval == 0:
             try:
