@@ -2,34 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from distributions import Categorical, DiagGaussian
-
-# A temporary solution from the master branch.
-# https://github.com/pytorch/pytorch/blob/7752fe5d4e50052b3b0bbc9109e599f8157febc0/torch/nn/init.py#L312
-# Remove after the next version of PyTorch gets release.
-def orthogonal(tensor, gain=1):
-    if tensor.ndimension() < 2:
-        raise ValueError("Only tensors with 2 or more dimensions are supported")
-
-    rows = tensor.size(0)
-    cols = tensor[0].numel()
-    flattened = torch.Tensor(rows, cols).normal_(0, 1)
-
-    if rows < cols:
-        flattened.t_()
-
-    # Compute the qr factorization
-    q, r = torch.qr(flattened)
-    # Make Q uniform according to https://arxiv.org/pdf/math-ph/0609050.pdf
-    d = torch.diag(r, 0)
-    ph = d.sign()
-    q *= ph.expand_as(q)
-
-    if rows < cols:
-        q.t_()
-
-    tensor.view_as(q).copy_(q)
-    tensor.mul_(gain)
-    return tensor
+from utils import orthogonal
 
 
 def weights_init(m):
@@ -44,29 +17,42 @@ class FFPolicy(nn.Module):
     def __init__(self):
         super(FFPolicy, self).__init__()
 
-    def forward(self, x):
+    def forward(self, inputs, states, masks):
         raise NotImplementedError
 
-    def act(self, inputs, deterministic=False):
-        value, x = self(inputs)
+    def act(self, inputs, states, masks, deterministic=False):
+        value, x, states = self(inputs, states, masks)
         action = self.dist.sample(x, deterministic=deterministic)
         action_log_probs, dist_entropy = self.dist.logprobs_and_entropy(x, action)
-        return value, action, action_log_probs
+        return value, action, action_log_probs, states
 
-    def evaluate_actions(self, inputs, actions):
-        value, x = self(inputs)
+    def evaluate_actions(self, inputs, states, masks, actions):
+        value, x, states = self(inputs, states, masks)
         action_log_probs, dist_entropy = self.dist.logprobs_and_entropy(x, actions)
-        return value, action_log_probs, dist_entropy
+        return value, action_log_probs, dist_entropy, states
 
+
+def printstat(self, input, output):
+    # input is a tuple of packed inputs
+    # output is a Variable. output.data is the Tensor we are interested
+    print('Inside ' + self.__class__.__name__ + ' forward')
+    print('')
+    print('input: mean {}, std {}'.format(input[0].data.mean(), input[0].data.std()))
+    print('output: mean {}, std {}'.format(output[0].data.mean(), output[0].data.std()))
 
 class CNNPolicy(FFPolicy):
-    def __init__(self, num_inputs, action_space):
+    def __init__(self, num_inputs, action_space, use_gru):
         super(CNNPolicy, self).__init__()
         self.conv1 = nn.Conv2d(num_inputs, 32, 8, stride=4)
         self.conv2 = nn.Conv2d(32, 64, 4, stride=2)
         self.conv3 = nn.Conv2d(64, 32, 3, stride=1)
 
         self.linear1 = nn.Linear(32 * 7 * 7, 512)
+
+        if use_gru:
+            self.gru = nn.GRUCell(512, 512)
+
+        #self.lstm.register_forward_hook(printstat)
 
         self.critic_linear = nn.Linear(512, 1)
 
@@ -82,6 +68,13 @@ class CNNPolicy(FFPolicy):
         self.train()
         self.reset_parameters()
 
+    @property
+    def state_size(self):
+        if hasattr(self, 'gru'):
+            return 512
+        else:
+            return 1
+
     def reset_parameters(self):
         self.apply(weights_init)
 
@@ -91,10 +84,16 @@ class CNNPolicy(FFPolicy):
         self.conv3.weight.data.mul_(relu_gain)
         self.linear1.weight.data.mul_(relu_gain)
 
+        if hasattr(self, 'gru'):
+            orthogonal(self.gru.weight_ih.data)
+            orthogonal(self.gru.weight_hh.data)
+            self.gru.bias_ih.data.fill_(0)
+            self.gru.bias_hh.data.fill_(0)
+
         if self.dist.__class__.__name__ == "DiagGaussian":
             self.dist.fc_mean.weight.data.mul_(0.01)
 
-    def forward(self, inputs):
+    def forward(self, inputs, states, masks):
         x = self.conv1(inputs / 255.0)
         x = F.relu(x)
 
@@ -108,7 +107,18 @@ class CNNPolicy(FFPolicy):
         x = self.linear1(x)
         x = F.relu(x)
 
-        return self.critic_linear(x), x
+        if hasattr(self, 'gru'):
+            if inputs.size(0) == states.size(0):
+                x = states = self.gru(x, states * masks)
+            else:
+                x = x.view(-1, states.size(0), x.size(1))
+                masks = masks.view(-1, states.size(0), 1)
+                outputs = []
+                for i in range(x.size(0)):
+                    hx = states = self.gru(x[i], states * masks[i])
+                    outputs.append(hx)
+                x = torch.cat(outputs, 0)
+        return self.critic_linear(x), x, states
 
 
 def weights_init_mlp(m):
@@ -145,6 +155,10 @@ class MLPPolicy(FFPolicy):
         self.train()
         self.reset_parameters()
 
+    @property
+    def state_size(self):
+        return 1
+
     def reset_parameters(self):
         self.apply(weights_init_mlp)
 
@@ -159,7 +173,7 @@ class MLPPolicy(FFPolicy):
         if self.dist.__class__.__name__ == "DiagGaussian":
             self.dist.fc_mean.weight.data.mul_(0.01)
 
-    def forward(self, inputs):
+    def forward(self, inputs, states, masks):
         x = self.v_fc1(inputs)
         x = F.tanh(x)
 
@@ -175,4 +189,4 @@ class MLPPolicy(FFPolicy):
         x = self.a_fc2(x)
         x = F.tanh(x)
 
-        return value, x
+        return value, x, states

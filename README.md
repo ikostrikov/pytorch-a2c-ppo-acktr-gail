@@ -72,7 +72,7 @@ python main.py --env-name "PongNoFrameskip-v4"
 #### PPO
 
 ```bash
-python main.py --env-name "PongNoFrameskip-v4" --algo ppo --use-gae --num-processes 8 --num-steps 128 --num-mini-batch 4 --vis-interval 1 --log-interval 1
+python main.py --env-name "PongNoFrameskip-v4" --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --vis-interval 1 --log-interval 1
 ```
 
 #### ACKTR
