@@ -33,8 +33,8 @@ class WrapPyTorch(gym.ObservationWrapper):
         super(WrapPyTorch, self).__init__(env)
         obs_shape = self.observation_space.shape
         self.observation_space = Box(
-            0.0,
-            1.0,
+            self.observation_space.low[0,0,0],
+            self.observation_space.high[0,0,0],
             [obs_shape[2], obs_shape[1], obs_shape[0]]
         )
 
