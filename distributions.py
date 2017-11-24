@@ -23,7 +23,7 @@ class Categorical(nn.Module):
         if deterministic is False:
             action = probs.multinomial()
         else:
-            action = probs.max(1)[1]
+            action = probs.max(1, keepdim=True)[1]
         return action
 
     def logprobs_and_entropy(self, x, actions):
@@ -60,11 +60,10 @@ class DiagGaussian(nn.Module):
 
         action_std = action_logstd.exp()
 
-        noise = Variable(torch.randn(action_std.size()))
-        if action_std.is_cuda:
-            noise = noise.cuda()
-
         if deterministic is False:
+            noise = Variable(torch.randn(action_std.size()))
+            if action_std.is_cuda:
+                noise = noise.cuda()
             action = action_mean + action_std * noise
         else:
             action = action_mean

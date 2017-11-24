@@ -237,6 +237,10 @@ def main():
             save_model = actor_critic
             if args.cuda:
                 save_model = copy.deepcopy(actor_critic).cpu()
+
+            save_model = [save_model,
+                            hasattr(envs, 'ob_rms') and envs.ob_rms or None]
+
             torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
 
         if j % args.log_interval == 0:

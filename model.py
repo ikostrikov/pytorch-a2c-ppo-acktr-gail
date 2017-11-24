@@ -32,14 +32,6 @@ class FFPolicy(nn.Module):
         return value, action_log_probs, dist_entropy, states
 
 
-def printstat(self, input, output):
-    # input is a tuple of packed inputs
-    # output is a Variable. output.data is the Tensor we are interested
-    print('Inside ' + self.__class__.__name__ + ' forward')
-    print('')
-    print('input: mean {}, std {}'.format(input[0].data.mean(), input[0].data.std()))
-    print('output: mean {}, std {}'.format(output[0].data.mean(), output[0].data.std()))
-
 class CNNPolicy(FFPolicy):
     def __init__(self, num_inputs, action_space, use_gru):
         super(CNNPolicy, self).__init__()
@@ -51,8 +43,6 @@ class CNNPolicy(FFPolicy):
 
         if use_gru:
             self.gru = nn.GRUCell(512, 512)
-
-        #self.lstm.register_forward_hook(printstat)
 
         self.critic_linear = nn.Linear(512, 1)
 
