@@ -117,12 +117,13 @@ def main():
     start = time.time()
     for j in range(num_updates):
 
-        # decrease learning rate linearly
-        if args.algo == "acktr":
-            # use optimizer's learning rate since it's hard-coded in kfac.py
-            update_linear_schedule(optimizer, j, num_updates, optimizer.lr)
-        else:
-            update_linear_schedule(optimizer, j, num_updates, args.lr)
+        if args.lr_schedule:
+            # decrease learning rate linearly
+            if args.algo == "acktr":
+                # use optimizer's learning rate since it's hard-coded in kfac.py
+                update_linear_schedule(optimizer, j, num_updates, optimizer.lr)
+            else:
+                update_linear_schedule(optimizer, j, num_updates, args.lr)
 
         for step in range(args.num_steps):
             # Sample actions
