@@ -2,6 +2,8 @@ import copy
 import glob
 import os
 import time
+import operator
+from functools import reduce
 
 import gym
 import numpy as np
@@ -68,12 +70,14 @@ def main():
     obs_shape = envs.observation_space.shape
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
-    if len(envs.observation_space.shape) == 3:
+    obs_numel = reduce(operator.mul, obs_shape, 1)
+
+    if len(obs_shape) == 3 and obs_numel > 1024:
         actor_critic = CNNPolicy(obs_shape[0], envs.action_space, args.recurrent_policy)
     else:
         assert not args.recurrent_policy, \
             "Recurrent policy is not implemented for the MLP controller"
-        actor_critic = MLPPolicy(obs_shape[0], envs.action_space)
+        actor_critic = MLPPolicy(obs_numel, envs.action_space)
 
     if envs.action_space.__class__.__name__ == "Discrete":
         action_shape = 1
