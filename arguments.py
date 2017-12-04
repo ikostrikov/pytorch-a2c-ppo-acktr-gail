@@ -57,6 +57,8 @@ def get_args():
                         help='disables CUDA training')
     parser.add_argument('--recurrent-policy', action='store_true', default=False,
                         help='use a recurrent policy')
+    parser.add_argument('--lr-schedule', action='store_true', default=False,
+                        help='use a linear schedule on the learning rate')
     parser.add_argument('--no-vis', action='store_true', default=False,
                         help='disables visdom visualization')
     args = parser.parse_args()
