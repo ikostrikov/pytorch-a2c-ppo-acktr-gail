@@ -203,11 +203,9 @@ class KFACOptimizer(optim.Optimizer):
                 # My asynchronous implementation exists, I will add it later.
                 # Experimenting with different ways to this in PyTorch.
                 self.d_a[m], self.Q_a[m] = torch.symeig(
-                    self.m_aa[m].double(), eigenvectors=True)
+                    self.m_aa[m], eigenvectors=True)
                 self.d_g[m], self.Q_g[m] = torch.symeig(
-                    self.m_gg[m].double(), eigenvectors=True)
-                self.d_a[m], self.Q_a[m] = self.d_a[m].float(), self.Q_a[m].float()
-                self.d_g[m], self.Q_g[m] = self.d_g[m].float(), self.Q_g[m].float()
+                    self.m_gg[m], eigenvectors=True)
 
                 self.d_a[m].mul_((self.d_a[m] > 1e-6).float())
                 self.d_g[m].mul_((self.d_g[m] > 1e-6).float())
