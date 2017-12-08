@@ -104,7 +104,7 @@ class KFACOptimizer(optim.Optimizer):
                     split_bias(child)
 
         split_bias(model)
-            
+
         super(KFACOptimizer, self).__init__(model.parameters(), defaults)
 
         self.known_modules = {'Linear', 'Conv2d', 'AddBias'}
@@ -203,14 +203,11 @@ class KFACOptimizer(optim.Optimizer):
                 # My asynchronous implementation exists, I will add it later.
                 # Experimenting with different ways to this in PyTorch.
                 self.d_a[m], self.Q_a[m] = torch.symeig(
-                    self.m_aa[m].cpu().double(), eigenvectors=True)
+                    self.m_aa[m].double(), eigenvectors=True)
                 self.d_g[m], self.Q_g[m] = torch.symeig(
-                    self.m_gg[m].cpu().double(), eigenvectors=True)
+                    self.m_gg[m].double(), eigenvectors=True)
                 self.d_a[m], self.Q_a[m] = self.d_a[m].float(), self.Q_a[m].float()
                 self.d_g[m], self.Q_g[m] = self.d_g[m].float(), self.Q_g[m].float()
-                if self.m_aa[m].is_cuda:
-                    self.d_a[m], self.Q_a[m] = self.d_a[m].cuda(), self.Q_a[m].cuda()
-                    self.d_g[m], self.Q_g[m] = self.d_g[m].cuda(), self.Q_g[m].cuda()
 
                 self.d_a[m].mul_((self.d_a[m] > 1e-6).float())
                 self.d_g[m].mul_((self.d_g[m] > 1e-6).float())
