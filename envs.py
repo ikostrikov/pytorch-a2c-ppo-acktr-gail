@@ -27,9 +27,27 @@ def make_env(env_id, seed, rank, log_dir):
         obs_shape = env.observation_space.shape
         if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
             env = WrapPyTorch(env)
+        # Rescale observations into the [0,1] range
+        env = ScaleObservations(env)
+
         return env
 
     return _thunk
+
+
+class ScaleObservations(gym.ObservationWrapper):
+    def __init__(self, env=None):
+        super(ScaleObservations, self).__init__(env)
+        self.obs_lo = self.observation_space.low[0,0,0]
+        self.obs_hi = self.observation_space.high[0,0,0]
+        obs_shape = self.observation_space.shape
+        self.observation_space = Box(0.0, 1.0, obs_shape)
+
+    def _observation(self, obs):
+        if self.obs_lo == 0.0 and self.obs_hi == 1.0:
+            return obs
+        else:
+            return (obs - self.obs_lo) / (self.obs_hi - self.obs_lo)
 
 
 class WrapPyTorch(gym.ObservationWrapper):
