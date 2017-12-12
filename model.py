@@ -84,7 +84,7 @@ class CNNPolicy(FFPolicy):
             self.dist.fc_mean.weight.data.mul_(0.01)
 
     def forward(self, inputs, states, masks):
-        x = self.conv1(inputs / 255.0)
+        x = self.conv1(inputs)
         x = F.relu(x)
 
         x = self.conv2(x)
