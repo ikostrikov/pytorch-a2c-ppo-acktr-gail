@@ -45,7 +45,7 @@ pip install -r requirements.txt
 
 ## Contributions
 
-Contributions are very welcome. If you know how to make this code better, don't hesitate to send a pull request. Also see a todo list below.
+Contributions are very welcome. If you know how to make this code better, please open an issue. If you want to submit a pull request, please open an issue first. Also see a todo list below.
 
 Also I'm searching for volunteers to run all experiments on Atari and MuJoCo (with multiple random seeds).
 
