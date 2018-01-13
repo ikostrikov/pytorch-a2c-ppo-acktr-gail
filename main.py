@@ -51,7 +51,7 @@ def main():
 
     if args.vis:
         from visdom import Visdom
-        viz = Visdom()
+        viz = Visdom(port=args.port)
         win = None
 
     envs = [make_env(args.env_name, args.seed, i, args.log_dir)
