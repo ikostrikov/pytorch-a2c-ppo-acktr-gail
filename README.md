@@ -12,6 +12,17 @@ Also see the OpenAI posts: [A2C/ACKTR](https://blog.openai.com/baselines-acktr-a
 
 This implementation is inspired by the OpenAI baselines for [A2C](https://github.com/openai/baselines/tree/master/baselines/a2c), [ACKTR](https://github.com/openai/baselines/tree/master/baselines/acktr) and [PPO](https://github.com/openai/baselines/tree/master/baselines/ppo1). It uses the same hyper parameters and the model since they were well tuned for Atari games.
 
+Please use this bibtex if you want to cite this repository in your publications:
+
+    @misc{baselines,
+      author = {Kostrikov, Ilya},
+      title = {PyTorch Implementations of Reinforcement Learning Algorithms},
+      year = {2018},
+      publisher = {GitHub},
+      journal = {GitHub repository},
+      howpublished = {\url{https://github.com/ikostrikov/pytorch-a2c-ppo-acktr}},
+    }
+
 ## Supported (and tested) environments (via [OpenAI Gym](https://gym.openai.com))
 * [Atari Learning Environment](https://github.com/mgbellemare/Arcade-Learning-Environment)
 * [MuJoCo](http://mujoco.org)
