@@ -14,7 +14,7 @@ This implementation is inspired by the OpenAI baselines for [A2C](https://github
 
 Please use this bibtex if you want to cite this repository in your publications:
 
-    @misc{baselines,
+    @misc{pytorchrl,
       author = {Kostrikov, Ilya},
       title = {PyTorch Implementations of Reinforcement Learning Algorithms},
       year = {2018},
