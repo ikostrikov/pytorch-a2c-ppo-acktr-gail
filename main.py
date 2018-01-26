@@ -90,7 +90,7 @@ def main():
     elif args.algo == 'acktr':
         optimizer = KFACOptimizer(actor_critic)
 
-    rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
+    rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size())
     current_obs = torch.zeros(args.num_processes, *obs_shape)
 
     def update_current_obs(obs):
@@ -152,7 +152,7 @@ def main():
 
         if args.algo in ['a2c', 'acktr']:
             values, action_log_probs, dist_entropy, states = actor_critic.evaluate_actions(Variable(rollouts.observations[:-1].view(-1, *obs_shape)),
-                                                                                           Variable(rollouts.states[0].view(-1, actor_critic.state_size)),
+                                                                                           Variable(rollouts.states[0].view(-1, actor_critic.state_size())),
                                                                                            Variable(rollouts.masks[:-1].view(-1, 1)),
                                                                                            Variable(rollouts.actions.view(-1, action_shape)))
 
