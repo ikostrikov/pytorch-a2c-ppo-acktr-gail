@@ -18,11 +18,10 @@ COLORS = {BLACK: [0.0, 0.0, 0.0], GRAY: [0.5, 0.5, 0.5],
           RED: [1.0, 0.0, 0.0], PINK: [1.0, 0.0, 1.0],
           YELLOW: [1.0, 1.0, 0.0]}
 
-NOOP = 0
-UP = 1
-DOWN = 2
-LEFT = 3
-RIGHT = 4
+UP = 0
+DOWN = 1
+LEFT = 2
+RIGHT = 3
 
 
 class GridworldEnv(gym.Env):
@@ -32,10 +31,10 @@ class GridworldEnv(gym.Env):
     def __init__(self, plan, stochastic=False):
 
         self.stochastic = stochastic
-        self.actions = [NOOP, UP, DOWN, LEFT, RIGHT]
-        self.inv_actions = [0, 1, 2, 3, 4]
-        self.action_space = spaces.Discrete(5)
-        self.action_pos_dict = {NOOP: [0, 0], UP: [-1, 0], DOWN: [1, 0], LEFT: [0, -1], RIGHT: [0, 1]}
+        self.actions = [UP, DOWN, LEFT, RIGHT]
+        self.inv_actions = [0, 1, 2, 3]
+        self.action_space = spaces.Discrete(4)
+        self.action_pos_dict = {UP: [-1, 0], DOWN: [1, 0], LEFT: [0, -1], RIGHT: [0, 1]}
         self.img_shape = [256, 256, 3]  # observation space shape
 
         # initialize system state
@@ -71,8 +70,6 @@ class GridworldEnv(gym.Env):
         nxt_agent_state = (self.agent_state[0] + self.action_pos_dict[action][0],
                            self.agent_state[1] + self.action_pos_dict[action][1])
 
-        if action == NOOP:
-            return self.current_grid_map, reward, False, info
         next_state_out_of_map = (nxt_agent_state[0] < 0 or nxt_agent_state[0] >= self.grid_map_shape[1]) or \
                                 (nxt_agent_state[1] < 0 or nxt_agent_state[1] >= self.grid_map_shape[2])
         if next_state_out_of_map:
@@ -222,4 +219,4 @@ class GridworldEnv(gym.Env):
 
     @staticmethod
     def get_action_meaning():
-        return ['NOOP', 'UP', 'DOWN', 'LEFT', 'RIGHT']
+        return ['UP', 'DOWN', 'LEFT', 'RIGHT']
