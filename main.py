@@ -120,6 +120,9 @@ def main():
             value, action, action_log_prob, states = actor_critic.act(Variable(rollouts.observations[step], volatile=True),
                                                                       Variable(rollouts.states[step], volatile=True),
                                                                       Variable(rollouts.masks[step], volatile=True))
+            
+            # print(action)
+
             cpu_actions = action.data.squeeze(1).cpu().numpy()
 
             # Obser reward and next obs

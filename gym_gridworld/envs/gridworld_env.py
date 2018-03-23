@@ -57,12 +57,16 @@ class GridworldEnv(gym.Env):
         self.this_fig_num = GridworldEnv.num_env
         self.viewer = None
 
+        self.steps = 0
+        self.max_steps = 100
+
     def _seed(self, seed=None):
         self.np_random, seed1 = seeding.np_random(seed)
         return seed1
 
     def _step(self, action):
         """ return next observation, reward, finished, success """
+
         action = int(action)
         info = {'success': True}
         done = False
@@ -70,7 +74,14 @@ class GridworldEnv(gym.Env):
         nxt_agent_state = (self.agent_state[0] + self.action_pos_dict[action][0],
                            self.agent_state[1] + self.action_pos_dict[action][1])
 
+        # self.steps += 1
+        # if self.steps == self.max_steps:
+        #     done = True
+        #     reward = -100
+        #     return self.current_grid_map, reward, done, info
+
         if action == NOOP:
+            reward = -0.2
             return self.current_grid_map, reward, False, info
         next_state_out_of_map = (nxt_agent_state[0] < 0 or nxt_agent_state[0] >= self.grid_map_shape[1]) or \
                                 (nxt_agent_state[1] < 0 or nxt_agent_state[1] >= self.grid_map_shape[2])
@@ -84,6 +95,7 @@ class GridworldEnv(gym.Env):
         if target_position == EMPTY:
             self.current_grid_map[nxt_agent_state[0], nxt_agent_state[1]] = AGENT
         elif target_position == WALL:
+            # reward = -0.5
             info['success'] = False
             return self.current_grid_map, reward, False, info
         elif target_position == TARGET:
@@ -104,6 +116,7 @@ class GridworldEnv(gym.Env):
         return self.current_grid_map, reward, done, info
 
     def _reset(self):
+        self.steps = 0
         self.current_grid_map = copy.deepcopy(self.start_grid_map)
         if self.stochastic:
             self._init_stochastic()
