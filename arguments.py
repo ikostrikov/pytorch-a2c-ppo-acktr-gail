@@ -46,10 +46,10 @@ def get_args():
                         help='save interval, one save per n updates (default: 10)')
     parser.add_argument('--vis-interval', type=int, default=100,
                         help='vis interval, one log per n updates (default: 100)')
-    parser.add_argument('--num-frames', type=int, default=10e6,
-                        help='number of frames to train (default: 10e6)')
-    parser.add_argument('--env-name', default='Gridworld6Stochastic-v0',
-                        help='environment to train on (default: Gridworld6Stochastic-v0)')
+    parser.add_argument('--num-frames', type=int, default=10e8,
+                        help='number of frames to train (default: 10e8)')
+    parser.add_argument('--env-name', default='Gridworld5Stochastic-v0',
+                        help='environment to train on (default: Gridworld5Stochastic-v0)')
     parser.add_argument('--log-dir', default='/tmp/gym/',
                         help='directory to save agent logs (default: /tmp/gym)')
     parser.add_argument('--save-dir', default='./trained_models/',
