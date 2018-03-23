@@ -83,7 +83,7 @@ class GridworldEnv(gym.Env):
             self.current_grid_map[nxt_agent_state[0], nxt_agent_state[1]] = AGENT
         elif target_position == WALL:
             info['success'] = False
-            reward = 0
+            reward = -0.1
             return self.current_grid_map, reward, False, info
         elif target_position == TARGET:
             done = True
