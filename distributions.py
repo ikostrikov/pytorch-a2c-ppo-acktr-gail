@@ -19,7 +19,7 @@ class Categorical(nn.Module):
     def sample(self, x, deterministic):
         x = self(x)
 
-        probs = F.softmax(x)
+        probs = F.softmax(x, dim=1)
         if deterministic is False:
             action = probs.multinomial()
         else:
@@ -29,8 +29,8 @@ class Categorical(nn.Module):
     def logprobs_and_entropy(self, x, actions):
         x = self(x)
 
-        log_probs = F.log_softmax(x)
-        probs = F.softmax(x)
+        log_probs = F.log_softmax(x, dim=1)
+        probs = F.softmax(x, dim=1)
 
         action_log_probs = log_probs.gather(1, actions)
 

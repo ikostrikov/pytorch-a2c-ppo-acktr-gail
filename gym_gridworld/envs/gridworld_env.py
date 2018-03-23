@@ -66,7 +66,7 @@ class GridworldEnv(gym.Env):
         action = int(action)
         info = {'success': True}
         done = False
-        reward = 0.0
+        reward = -0.1
         nxt_agent_state = (self.agent_state[0] + self.action_pos_dict[action][0],
                            self.agent_state[1] + self.action_pos_dict[action][1])
 
@@ -85,15 +85,14 @@ class GridworldEnv(gym.Env):
             self.current_grid_map[nxt_agent_state[0], nxt_agent_state[1]] = AGENT
         elif target_position == WALL:
             info['success'] = False
-            # reward = -0.1
             return self.current_grid_map, reward, False, info
         elif target_position == TARGET:
             done = True
-            reward = 1
+            reward = 100
             # self.current_grid_map[nxt_agent_state[0], nxt_agent_state[1]] = SUCCESS
         elif target_position == MINE:
             done = True
-            reward = -1
+            reward = -100
             # self.current_grid_map[nxt_agent_state[0], nxt_agent_state[1]] = MINE
 
         # if done and self.restart_once_done:
@@ -102,7 +101,6 @@ class GridworldEnv(gym.Env):
 
         self.current_grid_map[self.agent_state[0], self.agent_state[1]] = EMPTY
         self.agent_state = copy.deepcopy(nxt_agent_state)
-
         return self.current_grid_map, reward, done, info
 
     def _reset(self):
