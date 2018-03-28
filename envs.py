@@ -7,6 +7,11 @@ from baselines import bench
 from baselines.common.atari_wrappers import make_atari, wrap_deepmind
 
 try:
+    import dm_control2gym
+except ImportError:
+    pass
+
+try:
     import pybullet_envs
     import roboschool
 except ImportError:
@@ -15,7 +20,11 @@ except ImportError:
 
 def make_env(env_id, seed, rank, log_dir):
     def _thunk():
-        env = gym.make(env_id)
+        if env_id.startswith("dm"):
+            _, domain, task = env_id.split('.')
+            env = dm_control2gym.make(domain_name=domain, task_name=task)
+        else:
+            env = gym.make(env_id)
         is_atari = hasattr(gym.envs, 'atari') and isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
         if is_atari:
             env = make_atari(env_id)
