@@ -117,9 +117,10 @@ def main():
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
-            value, action, action_log_prob, states = actor_critic.act(Variable(rollouts.observations[step], volatile=True),
-                             Variable(rollouts.states[step], volatile=True),
-                             Variable(rollouts.masks[step], volatile=True))
+            value, action, action_log_prob, states = actor_critic.act(
+                    Variable(rollouts.observations[step], volatile=True),
+                    Variable(rollouts.states[step], volatile=True),
+                    Variable(rollouts.masks[step], volatile=True))
             cpu_actions = action.data.squeeze(1).cpu().numpy()
 
             # Obser reward and next obs
@@ -207,10 +208,11 @@ def main():
                             adv_targ = sample
 
                     # Reshape to do in a single forward pass for all steps
-                    values, action_log_probs, dist_entropy, states = actor_critic.evaluate_actions(Variable(observations_batch),
-                                                  Variable(states_batch),
-                                                  Variable(masks_batch),
-                                                  Variable(actions_batch))
+                    values, action_log_probs, dist_entropy, states = actor_critic.evaluate_actions(
+                            Variable(observations_batch),
+                            Variable(states_batch),
+                            Variable(masks_batch),
+                            Variable(actions_batch))
 
                     adv_targ = Variable(adv_targ)
                     ratio = torch.exp(action_log_probs - Variable(old_action_log_probs_batch))
