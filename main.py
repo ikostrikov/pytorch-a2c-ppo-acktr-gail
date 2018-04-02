@@ -145,9 +145,9 @@ def main():
             update_current_obs(obs)
             rollouts.insert(current_obs, states.data, action.data, action_log_prob.data, value.data, reward, masks)
 
-        next_value = actor_critic(Variable(rollouts.observations[-1], volatile=True),
-                                  Variable(rollouts.states[-1], volatile=True),
-                                  Variable(rollouts.masks[-1], volatile=True))[0].data
+        next_value = actor_critic.get_value(Variable(rollouts.observations[-1], volatile=True),
+                                            Variable(rollouts.states[-1], volatile=True),
+                                            Variable(rollouts.masks[-1], volatile=True)).data
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
