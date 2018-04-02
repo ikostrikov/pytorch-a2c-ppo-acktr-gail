@@ -19,6 +19,9 @@ class RolloutStorage(object):
             self.actions = self.actions.long()
         self.masks = torch.ones(num_steps + 1, num_processes, 1)
 
+        self.num_steps = num_steps
+        self.step = 0
+
     def cuda(self):
         self.observations = self.observations.cuda()
         self.states = self.states.cuda()
@@ -29,14 +32,16 @@ class RolloutStorage(object):
         self.actions = self.actions.cuda()
         self.masks = self.masks.cuda()
 
-    def insert(self, step, current_obs, state, action, action_log_prob, value_pred, reward, mask):
-        self.observations[step + 1].copy_(current_obs)
-        self.states[step + 1].copy_(state)
-        self.actions[step].copy_(action)
-        self.action_log_probs[step].copy_(action_log_prob)
-        self.value_preds[step].copy_(value_pred)
-        self.rewards[step].copy_(reward)
-        self.masks[step + 1].copy_(mask)
+    def insert(self, current_obs, state, action, action_log_prob, value_pred, reward, mask):
+        self.observations[self.step + 1].copy_(current_obs)
+        self.states[self.step + 1].copy_(state)
+        self.actions[self.step].copy_(action)
+        self.action_log_probs[self.step].copy_(action_log_prob)
+        self.value_preds[self.step].copy_(value_pred)
+        self.rewards[self.step].copy_(reward)
+        self.masks[self.step + 1].copy_(mask)
+        
+        self.step = (self.step + 1) % self.num_steps
 
     def after_update(self):
         self.observations[0].copy_(self.observations[-1])
