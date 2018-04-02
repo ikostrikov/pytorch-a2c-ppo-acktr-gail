@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from distributions import Categorical, DiagGaussian
+from distributions import get_distribution
 from utils import orthogonal
 
 
@@ -46,14 +46,7 @@ class CNNPolicy(FFPolicy):
 
         self.critic_linear = nn.Linear(512, 1)
 
-        if action_space.__class__.__name__ == "Discrete":
-            num_outputs = action_space.n
-            self.dist = Categorical(512, num_outputs)
-        elif action_space.__class__.__name__ == "Box":
-            num_outputs = action_space.shape[0]
-            self.dist = DiagGaussian(512, num_outputs)
-        else:
-            raise NotImplementedError
+        self.dist = get_distribution(512, action_space)
 
         self.train()
         self.reset_parameters()
@@ -133,14 +126,7 @@ class MLPPolicy(FFPolicy):
         self.v_fc2 = nn.Linear(64, 64)
         self.v_fc3 = nn.Linear(64, 1)
 
-        if action_space.__class__.__name__ == "Discrete":
-            num_outputs = action_space.n
-            self.dist = Categorical(64, num_outputs)
-        elif action_space.__class__.__name__ == "Box":
-            num_outputs = action_space.shape[0]
-            self.dist = DiagGaussian(64, num_outputs)
-        else:
-            raise NotImplementedError
+        self.dist = get_distribution(64, action_space)
 
         self.train()
         self.reset_parameters()

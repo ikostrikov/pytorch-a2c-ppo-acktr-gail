@@ -79,3 +79,15 @@ class DiagGaussian(nn.Module):
         dist_entropy = 0.5 + 0.5 * math.log(2 * math.pi) + action_logstd
         dist_entropy = dist_entropy.sum(-1).mean()
         return action_log_probs, dist_entropy
+
+
+def get_distribution(num_inputs, action_space):
+    if action_space.__class__.__name__ == "Discrete":
+        num_outputs = action_space.n
+        dist = Categorical(num_inputs, num_outputs)
+    elif action_space.__class__.__name__ == "Box":
+        num_outputs = action_space.shape[0]
+        dist = DiagGaussian(num_inputs, num_outputs)
+    else:
+        raise NotImplementedError
+    return dist
