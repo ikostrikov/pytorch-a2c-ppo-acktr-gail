@@ -35,8 +35,8 @@ class FFPolicy(nn.Module):
 class CNNPolicy(FFPolicy):
     def __init__(self, num_inputs, action_space, use_gru):
         super(CNNPolicy, self).__init__()
-        self.conv1 = nn.Conv2d(num_inputs, 32, 4, stride=2)
-        self.conv2 = nn.Conv2d(32, 64, 3, stride=2)
+        self.conv1 = nn.Conv2d(num_inputs, 32, kernel_size=(4, 4), stride=2)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=(3, 3), stride=2)
 
         self.linear1 = nn.Linear(64 * 1 * 1, 48)
         self.linear2 = nn.Linear(48, 32)
