@@ -100,11 +100,11 @@ class GridworldEnv(gym.Env):
             return self.current_grid_map, reward, False, info
         elif target_position == TARGET:
             done = True
-            reward = 100
+            reward = 1000
             # self.current_grid_map[nxt_agent_state[0], nxt_agent_state[1]] = SUCCESS
         elif target_position == MINE:
             done = True
-            reward = -100
+            reward = -1000
             # self.current_grid_map[nxt_agent_state[0], nxt_agent_state[1]] = MINE
 
         # if done and self.restart_once_done:
