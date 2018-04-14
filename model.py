@@ -71,7 +71,7 @@ class CNNPolicy(FFPolicy):
         relu_gain = nn.init.calculate_gain('relu')
         self.conv1.weight.data.mul_(relu_gain)
         self.conv2.weight.data.mul_(relu_gain)
-        # self.conv3.weight.data.mul_(relu_gain)
+
         self.linear1.weight.data.mul_(relu_gain)
         self.linear2.weight.data.mul_(relu_gain)
 
