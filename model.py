@@ -2,13 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from distributions import get_distribution
-from utils import orthogonal
 
 
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1 or classname.find('Linear') != -1:
-        orthogonal(m.weight.data)
+        nn.init.orthogonal(m.weight.data)
         if m.bias is not None:
             m.bias.data.fill_(0)
 
@@ -87,8 +86,8 @@ class CNNPolicy(Policy):
         self.linear1.weight.data.mul_(relu_gain)
 
         if hasattr(self, 'gru'):
-            orthogonal(self.gru.weight_ih.data)
-            orthogonal(self.gru.weight_hh.data)
+            nn.init.orthogonal(self.gru.weight_ih.data)
+            nn.init.orthogonal(self.gru.weight_hh.data)
             self.gru.bias_ih.data.fill_(0)
             self.gru.bias_hh.data.fill_(0)
 
