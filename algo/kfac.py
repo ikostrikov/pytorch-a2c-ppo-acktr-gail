@@ -1,9 +1,10 @@
 import math
 
 import torch
-import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
+
 from utils import AddBias
 
 # TODO: In order to make this code faster:
@@ -20,7 +21,8 @@ def _extract_patches(x, kernel_size, stride, padding):
     x = x.unfold(3, kernel_size[1], stride[1])
     x = x.transpose_(1, 2).transpose_(2, 3).contiguous()
     x = x.view(
-        x.size(0), x.size(1), x.size(2), x.size(3) * x.size(4) * x.size(5))
+        x.size(0), x.size(1), x.size(2),
+        x.size(3) * x.size(4) * x.size(5))
     return x
 
 
@@ -164,8 +166,8 @@ class KFACOptimizer(optim.Optimizer):
                 layer_info = (module.kernel_size, module.stride,
                               module.padding)
 
-            gg = compute_cov_g(grad_output[0].data, classname,
-                               layer_info, self.fast_cnn)
+            gg = compute_cov_g(grad_output[0].data, classname, layer_info,
+                               self.fast_cnn)
 
             # Initialize buffers
             if self.steps == 0:
