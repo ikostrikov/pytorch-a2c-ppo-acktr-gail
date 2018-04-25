@@ -142,7 +142,7 @@ class KFACOptimizer(optim.Optimizer):
             momentum=self.momentum)
 
     def _save_input(self, module, input):
-        if input[0].volatile == False and self.steps % self.Ts == 0:
+        if torch.is_grad_enabled() and self.steps % self.Ts == 0:
             classname = module.__class__.__name__
             layer_info = None
             if classname == 'Conv2d':

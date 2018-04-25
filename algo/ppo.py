@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.autograd import Variable
 
 from .kfac import KFACOptimizer
 
@@ -51,24 +50,22 @@ class PPO(object):
 
                 # Reshape to do in a single forward pass for all steps
                 values, action_log_probs, dist_entropy, states = self.actor_critic.evaluate_actions(
-                    Variable(observations_batch), Variable(states_batch),
-                    Variable(masks_batch), Variable(actions_batch))
+                    observations_batch, states_batch,
+                    masks_batch, actions_batch)
 
-                adv_targ = Variable(adv_targ)
-                ratio = torch.exp(
-                    action_log_probs - Variable(old_action_log_probs_batch))
+                ratio = torch.exp(action_log_probs - old_action_log_probs_batch)
                 surr1 = ratio * adv_targ
                 surr2 = torch.clamp(ratio, 1.0 - self.clip_param,
                                            1.0 + self.clip_param) * adv_targ
                 action_loss = -torch.min(surr1, surr2).mean()
 
-                value_loss = (Variable(return_batch) - values).pow(2).mean()
+                value_loss = (return_batch - values).pow(2).mean()
 
                 self.optimizer.zero_grad()
                 (value_loss * self.value_loss_coef + action_loss -
                  dist_entropy * self.entropy_coef).backward()
-                nn.utils.clip_grad_norm(self.actor_critic.parameters(),
-                                        self.max_grad_norm)
+                nn.utils.clip_grad_norm_(self.actor_critic.parameters(),
+                                         self.max_grad_norm)
                 self.optimizer.step()
 
         return value_loss, action_loss, dist_entropy

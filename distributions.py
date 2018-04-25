@@ -3,7 +3,6 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 from utils import AddBias
 
 
@@ -48,7 +47,7 @@ class DiagGaussian(nn.Module):
         action_mean = self.fc_mean(x)
 
         #  An ugly hack for my KFAC implementation.
-        zeros = Variable(torch.zeros(action_mean.size()), volatile=x.volatile)
+        zeros = torch.zeros(action_mean.size())
         if x.is_cuda:
             zeros = zeros.cuda()
 
@@ -61,7 +60,7 @@ class DiagGaussian(nn.Module):
         action_std = action_logstd.exp()
 
         if deterministic is False:
-            noise = Variable(torch.randn(action_std.size()))
+            noise = torch.randn(action_std.size())
             if action_std.is_cuda:
                 noise = noise.cuda()
             action = action_mean + action_std * noise

@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.autograd import Variable
 
 from .kfac import KFACOptimizer
 
@@ -37,32 +36,30 @@ class A2C_ACKTR(object):
         num_steps, num_processes, _ = rollouts.rewards.size()
 
         values, action_log_probs, dist_entropy, states = self.actor_critic.evaluate_actions(
-            Variable(rollouts.observations[:-1].view(-1, *obs_shape)),
-            Variable(rollouts.states[0].view(-1,
-                                             self.actor_critic.state_size)),
-            Variable(rollouts.masks[:-1].view(-1, 1)),
-            Variable(rollouts.actions.view(-1, action_shape)))
+            rollouts.observations[:-1].view(-1, *obs_shape),
+            rollouts.states[0].view(-1, self.actor_critic.state_size),
+            rollouts.masks[:-1].view(-1, 1),
+            rollouts.actions.view(-1, action_shape))
 
         values = values.view(num_steps, num_processes, 1)
         action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
 
-        advantages = Variable(rollouts.returns[:-1]) - values
+        advantages = rollouts.returns[:-1] - values
         value_loss = advantages.pow(2).mean()
 
-        action_loss = -(Variable(advantages.data) * action_log_probs).mean()
+        action_loss = -(advantages.detach() * action_log_probs).mean()
 
         if self.acktr and self.optimizer.steps % self.optimizer.Ts == 0:
             # Sampled fisher, see Martens 2014
             self.actor_critic.zero_grad()
             pg_fisher_loss = -action_log_probs.mean()
 
-            value_noise = Variable(torch.randn(values.size()))
+            value_noise = torch.randn(values.size())
             if values.is_cuda:
                 value_noise = value_noise.cuda()
 
             sample_values = values + value_noise
-            vf_fisher_loss = -(
-                values - Variable(sample_values.data)).pow(2).mean()
+            vf_fisher_loss = -(values - sample_values.detach()).pow(2).mean()
 
             fisher_loss = pg_fisher_loss + vf_fisher_loss
             self.optimizer.acc_stats = True
@@ -74,9 +71,9 @@ class A2C_ACKTR(object):
          dist_entropy * self.entropy_coef).backward()
 
         if self.acktr == False:
-            nn.utils.clip_grad_norm(self.actor_critic.parameters(),
-                                    self.max_grad_norm)
+            nn.utils.clip_grad_norm_(self.actor_critic.parameters(),
+                                     self.max_grad_norm)
 
         self.optimizer.step()
 
-        return value_loss, action_loss, dist_entropy
+        return value_loss.item(), action_loss.item(), dist_entropy.item()

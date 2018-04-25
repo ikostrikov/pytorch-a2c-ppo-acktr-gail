@@ -9,7 +9,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.autograd import Variable
 
 from arguments import get_args
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
@@ -125,10 +124,11 @@ def main():
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
-            value, action, action_log_prob, states = actor_critic.act(
-                    Variable(rollouts.observations[step], volatile=True),
-                    Variable(rollouts.states[step], volatile=True),
-                    Variable(rollouts.masks[step], volatile=True))
+            with torch.no_grad():
+                value, action, action_log_prob, states = actor_critic.act(
+                        rollouts.observations[step],
+                        rollouts.states[step],
+                        rollouts.masks[step])
             cpu_actions = action.data.squeeze(1).cpu().numpy()
 
             # Obser reward and next obs
@@ -153,9 +153,10 @@ def main():
             update_current_obs(obs)
             rollouts.insert(current_obs, states.data, action.data, action_log_prob.data, value.data, reward, masks)
 
-        next_value = actor_critic.get_value(Variable(rollouts.observations[-1], volatile=True),
-                                            Variable(rollouts.states[-1], volatile=True),
-                                            Variable(rollouts.masks[-1], volatile=True)).data
+        with torch.no_grad():
+            next_value = actor_critic.get_value(rollouts.observations[-1],
+                                                rollouts.states[-1],
+                                                rollouts.masks[-1]).detach()
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
@@ -189,8 +190,8 @@ def main():
                        final_rewards.mean(),
                        final_rewards.median(),
                        final_rewards.min(),
-                       final_rewards.max(), dist_entropy.data[0],
-                       value_loss.data[0], action_loss.data[0]))
+                       final_rewards.max(), dist_entropy,
+                       value_loss, action_loss))
         if args.vis and j % args.vis_interval == 0:
             try:
                 # Sometimes monitor doesn't properly flush the outputs

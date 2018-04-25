@@ -7,7 +7,7 @@ from distributions import get_distribution
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1 or classname.find('Linear') != -1:
-        nn.init.orthogonal(m.weight.data)
+        nn.init.orthogonal_(m.weight.data)
         if m.bias is not None:
             m.bias.data.fill_(0)
 
@@ -100,8 +100,8 @@ class CNNPolicy(Policy):
         self.main.apply(mult_gain)
 
         if hasattr(self, 'gru'):
-            nn.init.orthogonal(self.gru.weight_ih.data)
-            nn.init.orthogonal(self.gru.weight_hh.data)
+            nn.init.orthogonal_(self.gru.weight_ih.data)
+            nn.init.orthogonal_(self.gru.weight_hh.data)
             self.gru.bias_ih.data.fill_(0)
             self.gru.bias_hh.data.fill_(0)
 

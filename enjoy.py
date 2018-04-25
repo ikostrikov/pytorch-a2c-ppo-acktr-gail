@@ -4,7 +4,6 @@ import types
 
 import numpy as np
 import torch
-from torch.autograd import Variable
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
 
@@ -76,12 +75,12 @@ if args.env_name.find('Bullet') > -1:
             torsoId = i
 
 while True:
-    value, action, _, states = actor_critic.act(Variable(current_obs, volatile=True),
-                                                Variable(states, volatile=True),
-                                                Variable(masks, volatile=True),
-                                                deterministic=True)
-    states = states.data
-    cpu_actions = action.data.squeeze(1).cpu().numpy()
+    with torch.no_grad():
+        value, action, _, states = actor_critic.act(current_obs,
+                                                    states,
+                                                    masks,
+                                                    deterministic=True)
+    cpu_actions = action.squeeze(1).cpu().numpy()
     # Obser reward and next obs
     obs, reward, done, _ = env.step(cpu_actions)
 
