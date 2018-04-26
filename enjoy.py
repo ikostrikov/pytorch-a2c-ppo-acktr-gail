@@ -21,10 +21,12 @@ parser.add_argument('--env-name', default='PongNoFrameskip-v4',
                     help='environment to train on (default: PongNoFrameskip-v4)')
 parser.add_argument('--load-dir', default='./trained_models/',
                     help='directory to save agent logs (default: ./trained_models/)')
+parser.add_argument('--add-timestep', action='store_true', default=False,
+                    help='add timestep to observations')
 args = parser.parse_args()
 
 
-env = make_env(args.env_name, args.seed, 0, None)
+env = make_env(args.env_name, args.seed, 0, None, args.add_timestep)
 env = DummyVecEnv([env])
 
 actor_critic, ob_rms = \
