@@ -97,7 +97,7 @@ python main.py --env-name "PongNoFrameskip-v4" --algo acktr --num-processes 32 -
 
 ### MuJoCo
 
-I **highly** recommend to use --add-timestep argument with mujoco environments despite it's not a default option with OpenAI implementations.
+I **highly** recommend to use --add-timestep argument with some mujoco environments (for example, Reacher) despite it's not a default option with OpenAI implementations.
 
 #### A2C
 
