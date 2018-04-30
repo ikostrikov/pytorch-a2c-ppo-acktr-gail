@@ -2,19 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from distributions import get_distribution
-from utils import init_normc_
-
-
-def zero_bias_init(m):
-    classname = m.__class__.__name__
-    if classname.find('Conv') != -1 or classname.find('Linear') != -1:
-        m.bias.data.fill_(0)
-
-            
-def weights_init(m):
-    classname = m.__class__.__name__
-    if classname.find('Conv') != -1 or classname.find('Linear') != -1:
-        nn.init.orthogonal_(m.weight.data)
+from utils import init, init_normc_
 
 
 class Flatten(nn.Module):
@@ -64,27 +52,39 @@ class CNNBase(nn.Module):
     def __init__(self, num_inputs, action_space, use_gru):
         super(CNNBase, self).__init__()
         
+        init_ = lambda m: init(m,
+                      nn.init.orthogonal_,
+                      lambda x: nn.init.constant_(x, 0), 
+                      nn.init.calculate_gain('relu'))
+        
         self.main = nn.Sequential(
-            nn.Conv2d(num_inputs, 32, 8, stride=4),
+            init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
             nn.ReLU(),
-            nn.Conv2d(32, 64, 4, stride=2),
+            init_(nn.Conv2d(32, 64, 4, stride=2)),
             nn.ReLU(),
-            nn.Conv2d(64, 32, 3, stride=1),
+            init_(nn.Conv2d(64, 32, 3, stride=1)),
             nn.ReLU(),
             Flatten(),
-            nn.Linear(32 * 7 * 7, 512),
+            init_(nn.Linear(32 * 7 * 7, 512)),
             nn.ReLU()
         )
         
         if use_gru:
             self.gru = nn.GRUCell(512, 512)
+            nn.init.orthogonal_(self.gru.weight_ih.data)
+            nn.init.orthogonal_(self.gru.weight_hh.data)
+            self.gru.bias_ih.data.fill_(0)
+            self.gru.bias_hh.data.fill_(0)
+            
+        init_ = lambda m: init(m,
+          nn.init.orthogonal_,
+          lambda x: nn.init.constant_(x, 0))
 
-        self.critic_linear = nn.Linear(512, 1)
+        self.critic_linear = init_(nn.Linear(512, 1))
 
         self.dist = get_distribution(512, action_space)
 
         self.train()
-        self.reset_parameters()
 
     @property
     def state_size(self):
@@ -93,31 +93,8 @@ class CNNBase(nn.Module):
         else:
             return 1
 
-    def reset_parameters(self):
-        self.apply(weights_init)
-
-        def mult_gain(m):
-            relu_gain = nn.init.calculate_gain('relu')
-            classname = m.__class__.__name__
-            if classname.find('Conv') != -1 or classname.find('Linear') != -1:
-                m.weight.data.mul_(relu_gain)
-    
-        self.main.apply(mult_gain)
-        
-        self.apply(zero_bias_init)
-
-        if hasattr(self, 'gru'):
-            nn.init.orthogonal_(self.gru.weight_ih.data)
-            nn.init.orthogonal_(self.gru.weight_hh.data)
-            self.gru.bias_ih.data.fill_(0)
-            self.gru.bias_hh.data.fill_(0)
-
-        if self.dist.__class__.__name__ == "DiagGaussian":
-            self.dist.fc_mean.weight.data.mul_(0.01)
-
     def forward(self, inputs, states, masks):
         x = self.main(inputs / 255.0)
-
 
         if hasattr(self, 'gru'):
             if inputs.size(0) == states.size(0):
@@ -130,13 +107,8 @@ class CNNBase(nn.Module):
                     hx = states = self.gru(x[i], states * masks[i])
                     outputs.append(hx)
                 x = torch.cat(outputs, 0)
+
         return self.critic_linear(x), x, states
-
-
-def weights_init_mlp(m):
-    classname = m.__class__.__name__
-    if classname.find('Linear') != -1:
-        init_normc_(m.weight.data)
 
 
 class MLPBase(nn.Module):
@@ -145,37 +117,33 @@ class MLPBase(nn.Module):
 
         self.action_space = action_space
 
+        init_ = lambda m: init(m,
+              init_normc_,
+              lambda x: nn.init.constant_(x, 0))
+        
         self.actor = nn.Sequential(
-            nn.Linear(num_inputs, 64),
+            init_(nn.Linear(num_inputs, 64)),
             nn.Tanh(),
-            nn.Linear(64, 64),
+            init_(nn.Linear(64, 64)),
             nn.Tanh()
         )
         
         self.critic = nn.Sequential(
-            nn.Linear(num_inputs, 64),
+            init_(nn.Linear(num_inputs, 64)),
             nn.Tanh(),
-            nn.Linear(64, 64),
+            init_(nn.Linear(64, 64)),
             nn.Tanh()
         )
 
-        self.critic_linear = nn.Linear(64, 1)
+        self.critic_linear = init_(nn.Linear(64, 1))
         self.dist = get_distribution(64, action_space)
 
         self.train()
-        self.reset_parameters()
 
     @property
     def state_size(self):
         return 1
 
-    def reset_parameters(self):
-        self.apply(weights_init_mlp)
-        self.apply(zero_bias_init)
-        
-        if self.dist.__class__.__name__ == "DiagGaussian":
-            self.dist.fc_mean.weight.data.mul_(0.01)
-    
     def forward(self, inputs, states, masks):
         hidden_critic = self.critic(inputs)
         hidden_actor = self.actor(inputs)
