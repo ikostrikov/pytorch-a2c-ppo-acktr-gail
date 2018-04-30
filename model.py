@@ -34,6 +34,8 @@ class Policy(nn.Module):
         else:
             raise NotImplementedError
         
+        self.state_size = self.base.state_size
+
     def forward(self, inputs, states, masks):
         return self.base(inputs, states, masks)
 
