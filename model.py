@@ -32,25 +32,22 @@ class Policy(nn.Module):
         raise NotImplementedError
 
     def act(self, inputs, states, masks, deterministic=False):
-        hidden_critic, hidden_actor, states = self(inputs, states, masks)
+        value, hidden_actor, states = self(inputs, states, masks)
         
         action = self.dist.sample(hidden_actor, deterministic=deterministic)
 
         action_log_probs, dist_entropy = self.dist.logprobs_and_entropy(hidden_actor, action)
-        value = self.critic_linear(hidden_critic)
         
         return value, action, action_log_probs, states
 
     def get_value(self, inputs, states, masks):        
-        hidden_critic, _, states = self(inputs, states, masks)
-        value = self.critic_linear(hidden_critic)
+        value, _, _ = self(inputs, states, masks)
         return value
     
     def evaluate_actions(self, inputs, states, masks, actions):
-        hidden_critic, hidden_actor, states = self(inputs, states, masks)
+        value, hidden_actor, states = self(inputs, states, masks)
 
         action_log_probs, dist_entropy = self.dist.logprobs_and_entropy(hidden_actor, actions)
-        value = self.critic_linear(hidden_critic)
         
         return value, action_log_probs, dist_entropy, states
 
@@ -123,7 +120,7 @@ class CNNPolicy(Policy):
                     hx = states = self.gru(x[i], states * masks[i])
                     outputs.append(hx)
                 x = torch.cat(outputs, 0)
-        return x, x, states
+        return self.critic_linear(x), x, states
 
 
 def weights_init_mlp(m):
@@ -174,4 +171,4 @@ class MLPPolicy(Policy):
         hidden_critic = self.critic(inputs)
         hidden_actor = self.actor(inputs)
 
-        return hidden_critic, hidden_actor, states
+        return self.critic_linear(hidden_critic), hidden_actor, states
