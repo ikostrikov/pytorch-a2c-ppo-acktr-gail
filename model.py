@@ -3,13 +3,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 from distributions import get_distribution
 
+def zero_bias_init(m):
+    classname = m.__class__.__name__
+    if classname.find('Conv') != -1 or classname.find('Linear') != -1:
+        m.bias.data.fill_(0)
 
+            
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1 or classname.find('Linear') != -1:
         nn.init.orthogonal_(m.weight.data)
-        if m.bias is not None:
-            m.bias.data.fill_(0)
 
 
 class Flatten(nn.Module):
@@ -18,25 +21,26 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self):
+    def __init__(self, obs_shape, action_space, recurrent_policy):
         super(Policy, self).__init__()
-        """
-        All classes that inheret from Policy are expected to have
-        a feature exctractor for actor and critic (see examples below)
-        and modules called linear_critic and dist. Where linear_critic
-        takes critic features and maps them to value and dist
-        represents a distribution of actions.        
-        """
+        if len(obs_shape) == 3:
+            self.base = CNNBase(obs_shape[0], action_space, recurrent_policy)
+        elif len(obs_shape) == 1:
+            assert not recurrent_policy, \
+                "Recurrent policy is not implemented for the MLP controller"
+            self.base = MLPBase(obs_shape[0], action_space)
+        else:
+            raise NotImplementedError
         
     def forward(self, inputs, states, masks):
-        raise NotImplementedError
+        return self.base(inputs, states, masks)
 
     def act(self, inputs, states, masks, deterministic=False):
         value, hidden_actor, states = self(inputs, states, masks)
         
-        action = self.dist.sample(hidden_actor, deterministic=deterministic)
+        action = self.base.dist.sample(hidden_actor, deterministic=deterministic)
 
-        action_log_probs, dist_entropy = self.dist.logprobs_and_entropy(hidden_actor, action)
+        action_log_probs, dist_entropy = self.base.dist.logprobs_and_entropy(hidden_actor, action)
         
         return value, action, action_log_probs, states
 
@@ -47,14 +51,14 @@ class Policy(nn.Module):
     def evaluate_actions(self, inputs, states, masks, actions):
         value, hidden_actor, states = self(inputs, states, masks)
 
-        action_log_probs, dist_entropy = self.dist.logprobs_and_entropy(hidden_actor, actions)
+        action_log_probs, dist_entropy = self.base.dist.logprobs_and_entropy(hidden_actor, actions)
         
         return value, action_log_probs, dist_entropy, states
 
 
-class CNNPolicy(Policy):
+class CNNBase(nn.Module):
     def __init__(self, num_inputs, action_space, use_gru):
-        super(CNNPolicy, self).__init__()
+        super(CNNBase, self).__init__()
         
         self.main = nn.Sequential(
             nn.Conv2d(num_inputs, 32, 8, stride=4),
@@ -95,6 +99,8 @@ class CNNPolicy(Policy):
                 m.weight.data.mul_(relu_gain)
     
         self.main.apply(mult_gain)
+        
+        self.apply(zero_bias_init)
 
         if hasattr(self, 'gru'):
             nn.init.orthogonal_(self.gru.weight_ih.data)
@@ -128,13 +134,11 @@ def weights_init_mlp(m):
     if classname.find('Linear') != -1:
         m.weight.data.normal_(0, 1)
         m.weight.data *= 1 / torch.sqrt(m.weight.data.pow(2).sum(1, keepdim=True))
-        if m.bias is not None:
-            m.bias.data.fill_(0)
 
 
-class MLPPolicy(Policy):
+class MLPBase(nn.Module):
     def __init__(self, num_inputs, action_space):
-        super(MLPPolicy, self).__init__()
+        super(MLPBase, self).__init__()
 
         self.action_space = action_space
 
@@ -164,6 +168,8 @@ class MLPPolicy(Policy):
 
     def reset_parameters(self):
         self.apply(weights_init_mlp)
+        self.apply(zero_bias_init)
+        
         if self.dist.__class__.__name__ == "DiagGaussian":
             self.dist.fc_mean.weight.data.mul_(0.01)
     

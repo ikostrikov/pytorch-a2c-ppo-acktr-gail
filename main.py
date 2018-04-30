@@ -15,7 +15,7 @@ from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
 from envs import make_env
-from model import CNNPolicy, MLPPolicy
+from model import Policy
 from storage import RolloutStorage
 from visualize import visdom_plot
 
@@ -68,13 +68,8 @@ def main():
     obs_shape = envs.observation_space.shape
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
-    if len(envs.observation_space.shape) == 3:
-        actor_critic = CNNPolicy(obs_shape[0], envs.action_space, args.recurrent_policy)
-    else:
-        assert not args.recurrent_policy, \
-            "Recurrent policy is not implemented for the MLP controller"
-        actor_critic = MLPPolicy(obs_shape[0], envs.action_space)
-
+    actor_critic = Policy(obs_shape, envs.action_space, args.recurrent_policy)
+    
     if envs.action_space.__class__.__name__ == "Discrete":
         action_shape = 1
     else:
@@ -97,7 +92,7 @@ def main():
         agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
                                args.entropy_coef, acktr=True)
 
-    rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
+    rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.base.state_size)
     current_obs = torch.zeros(args.num_processes, *obs_shape)
 
     def update_current_obs(obs):
