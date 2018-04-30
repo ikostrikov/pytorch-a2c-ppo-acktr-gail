@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from distributions import get_distribution
+from utils import init_normc_
+
 
 def zero_bias_init(m):
     classname = m.__class__.__name__
@@ -132,8 +134,7 @@ class CNNBase(nn.Module):
 def weights_init_mlp(m):
     classname = m.__class__.__name__
     if classname.find('Linear') != -1:
-        m.weight.data.normal_(0, 1)
-        m.weight.data *= 1 / torch.sqrt(m.weight.data.pow(2).sum(1, keepdim=True))
+        init_normc_(m.weight.data)
 
 
 class MLPBase(nn.Module):
