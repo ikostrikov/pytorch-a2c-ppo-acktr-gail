@@ -47,7 +47,7 @@ def main():
     print("WARNING: All rewards are clipped or normalized so you need to use a monitor (see envs.py) or visdom plot to get true rewards")
     print("#######")
 
-    os.environ['OMP_NUM_THREADS'] = '1'
+    torch.set_num_threads(1)
 
     if args.vis:
         from visdom import Visdom

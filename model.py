@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from distributions import get_distribution
+from distributions import Categorical, DiagGaussian
 from utils import init, init_normc_
 
 
@@ -14,42 +14,55 @@ class Policy(nn.Module):
     def __init__(self, obs_shape, action_space, recurrent_policy):
         super(Policy, self).__init__()
         if len(obs_shape) == 3:
-            self.base = CNNBase(obs_shape[0], action_space, recurrent_policy)
+            self.base = CNNBase(obs_shape[0], recurrent_policy)
         elif len(obs_shape) == 1:
             assert not recurrent_policy, \
                 "Recurrent policy is not implemented for the MLP controller"
-            self.base = MLPBase(obs_shape[0], action_space)
+            self.base = MLPBase(obs_shape[0])
+        else:
+            raise NotImplementedError
+        
+        if action_space.__class__.__name__ == "Discrete":
+            num_outputs = action_space.n
+            self.dist = Categorical(self.base.output_size, num_outputs)
+        elif action_space.__class__.__name__ == "Box":
+            num_outputs = action_space.shape[0]
+            self.dist = DiagGaussian(self.base.output_size, num_outputs)
         else:
             raise NotImplementedError
         
         self.state_size = self.base.state_size
 
     def forward(self, inputs, states, masks):
-        return self.base(inputs, states, masks)
+        raise NotEmplementedError
 
     def act(self, inputs, states, masks, deterministic=False):
-        value, hidden_actor, states = self(inputs, states, masks)
+        value, actor_features, states = self.base(inputs, states, masks)
+        dist = self.dist(actor_features)
         
-        action = self.base.dist.sample(hidden_actor, deterministic=deterministic)
-
-        action_log_probs, dist_entropy = self.base.dist.logprobs_and_entropy(hidden_actor, action)
+        action = dist.sample()
+        
+        action_log_probs = dist.log_probs(action)
+        dist_entropy = dist.entropy().mean()
         
         return value, action, action_log_probs, states
 
     def get_value(self, inputs, states, masks):        
-        value, _, _ = self(inputs, states, masks)
+        value, _, _ = self.base(inputs, states, masks)
         return value
     
-    def evaluate_actions(self, inputs, states, masks, actions):
-        value, hidden_actor, states = self(inputs, states, masks)
+    def evaluate_actions(self, inputs, states, masks, action):
+        value, actor_features, states = self.base(inputs, states, masks)
+        dist = self.dist(actor_features)
 
-        action_log_probs, dist_entropy = self.base.dist.logprobs_and_entropy(hidden_actor, actions)
-        
+        action_log_probs = dist.log_probs(action)
+        dist_entropy = dist.entropy().mean()
+
         return value, action_log_probs, dist_entropy, states
 
 
 class CNNBase(nn.Module):
-    def __init__(self, num_inputs, action_space, use_gru):
+    def __init__(self, num_inputs, use_gru):
         super(CNNBase, self).__init__()
         
         init_ = lambda m: init(m,
@@ -82,8 +95,6 @@ class CNNBase(nn.Module):
 
         self.critic_linear = init_(nn.Linear(512, 1))
 
-        self.dist = get_distribution(512, action_space)
-
         self.train()
 
     @property
@@ -93,6 +104,10 @@ class CNNBase(nn.Module):
         else:
             return 1
 
+    @property
+    def output_size(self):
+        return 512
+        
     def forward(self, inputs, states, masks):
         x = self.main(inputs / 255.0)
 
@@ -112,11 +127,9 @@ class CNNBase(nn.Module):
 
 
 class MLPBase(nn.Module):
-    def __init__(self, num_inputs, action_space):
+    def __init__(self, num_inputs):
         super(MLPBase, self).__init__()
-
-        self.action_space = action_space
-
+        
         init_ = lambda m: init(m,
               init_normc_,
               lambda x: nn.init.constant_(x, 0))
@@ -136,13 +149,16 @@ class MLPBase(nn.Module):
         )
 
         self.critic_linear = init_(nn.Linear(64, 1))
-        self.dist = get_distribution(64, action_space)
 
         self.train()
 
     @property
     def state_size(self):
         return 1
+    
+    @property
+    def output_size(self):
+        return 64
 
     def forward(self, inputs, states, masks):
         hidden_critic = self.critic(inputs)
