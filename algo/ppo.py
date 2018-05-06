@@ -2,8 +2,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from .kfac import KFACOptimizer
-
 
 class PPO(object):
     def __init__(self,
