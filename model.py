@@ -34,7 +34,7 @@ class Policy(nn.Module):
         self.state_size = self.base.state_size
 
     def forward(self, inputs, states, masks):
-        raise NotEmplementedError
+        raise NotImplementedError
 
     def act(self, inputs, states, masks, deterministic=False):
         value, actor_features, states = self.base(inputs, states, masks)
