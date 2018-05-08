@@ -92,7 +92,7 @@ def main():
         agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
                                args.entropy_coef, acktr=True)
 
-    rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.base.state_size)
+    rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
     current_obs = torch.zeros(args.num_processes, *obs_shape)
 
     def update_current_obs(obs):
@@ -124,7 +124,7 @@ def main():
                         rollouts.observations[step],
                         rollouts.states[step],
                         rollouts.masks[step])
-            cpu_actions = action.data.squeeze(1).cpu().numpy()
+            cpu_actions = action.squeeze(1).cpu().numpy()
 
             # Obser reward and next obs
             obs, reward, done, info = envs.step(cpu_actions)
@@ -146,7 +146,7 @@ def main():
                 current_obs *= masks
 
             update_current_obs(obs)
-            rollouts.insert(current_obs, states.data, action.data, action_log_prob.data, value.data, reward, masks)
+            rollouts.insert(current_obs, states, action, action_log_prob, value, reward, masks)
 
         with torch.no_grad():
             next_value = actor_critic.get_value(rollouts.observations[-1],
