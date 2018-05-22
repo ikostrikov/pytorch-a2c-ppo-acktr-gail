@@ -33,6 +33,11 @@ class PPO(object):
         advantages = (advantages - advantages.mean()) / (
             advantages.std() + 1e-5)
 
+
+        value_loss_epoch = 0
+        action_loss_epoch = 0
+        dist_entropy_epoch = 0
+
         for e in range(self.ppo_epoch):
             if hasattr(self.actor_critic, 'gru'):
                 data_generator = rollouts.recurrent_generator(
@@ -66,4 +71,14 @@ class PPO(object):
                                          self.max_grad_norm)
                 self.optimizer.step()
 
-        return value_loss, action_loss, dist_entropy
+                value_loss_epoch += value_loss.item()
+                action_loss_epoch += action_loss.item()
+                dist_entropy_epoch += dist_entropy.item()
+                
+        num_updates = self.ppo_epoch * self.num_mini_batch
+
+        value_loss_epoch /= num_updates
+        action_loss_epoch /= num_updates
+        dist_entropy_epoch /= num_updates
+
+        return value_loss_epoch, action_loss_epoch, dist_entropy_epoch
