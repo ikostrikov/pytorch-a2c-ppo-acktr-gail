@@ -69,11 +69,6 @@ class RolloutStorage(object):
         mini_batch_size = batch_size // num_mini_batch
         sampler = BatchSampler(SubsetRandomSampler(range(batch_size)), mini_batch_size, drop_last=False)
         for indices in sampler:
-            indices = torch.LongTensor(indices)
-
-            if advantages.is_cuda:
-                indices = indices.cuda()
-
             observations_batch = self.observations[:-1].view(-1,
                                         *self.observations.size()[2:])[indices]
             states_batch = self.states[:-1].view(-1, self.states.size(-1))[indices]
