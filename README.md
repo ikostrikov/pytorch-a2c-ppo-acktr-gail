@@ -132,7 +132,7 @@ python enjoy.py --load-dir trained_models/a2c --env-name "PongNoFrameskip-v4" --
 ### MuJoCo
 
 ```bash
-python enjoy.py --load-dir trained_models/ppo --env-name "Reacher-v1" --num-stack 1
+python enjoy.py --load-dir trained_models/ppo --env-name "Reacher-v2" --num-stack 1
 ```
 
 ## Results
