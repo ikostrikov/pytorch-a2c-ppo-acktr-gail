@@ -14,7 +14,7 @@ class PPO(object):
                  lr=None,
                  eps=None,
                  max_grad_norm=None):
-        
+
         self.actor_critic = actor_critic
 
         self.clip_param = clip_param
@@ -74,7 +74,7 @@ class PPO(object):
                 value_loss_epoch += value_loss.item()
                 action_loss_epoch += action_loss.item()
                 dist_entropy_epoch += dist_entropy.item()
-                
+
         num_updates = self.ppo_epoch * self.num_mini_batch
 
         value_loss_epoch /= num_updates

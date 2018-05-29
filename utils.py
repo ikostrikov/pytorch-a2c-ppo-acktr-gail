@@ -22,7 +22,7 @@ def init(module, weight_init, bias_init, gain=1):
     bias_init(module.bias.data)
     return module
 
-    
+
 # https://github.com/openai/baselines/blob/master/baselines/common/tf_util.py#L87
 def init_normc_(weight, gain=1):
     weight.normal_(0, 1)
