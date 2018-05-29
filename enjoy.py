@@ -4,9 +4,13 @@ import os
 import numpy as np
 import torch
 
-from envs import VecPyTorch, make_vec_envs
-from utils import get_render_func, get_vec_normalize
+from a2c_ppo_acktr.envs import VecPyTorch, make_vec_envs
+from a2c_ppo_acktr.utils import get_render_func, get_vec_normalize
 
+
+# workaround to unpickle olf model files
+import sys
+sys.path.append('a2c_ppo_acktr')
 
 parser = argparse.ArgumentParser(description='RL')
 parser.add_argument('--seed', type=int, default=1,
