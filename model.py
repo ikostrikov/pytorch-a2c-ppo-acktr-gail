@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from distributions import Categorical, DiagGaussian
 from utils import init, init_normc_
 
@@ -16,9 +15,7 @@ class Policy(nn.Module):
         if len(obs_shape) == 3:
             self.base = CNNBase(obs_shape[0], recurrent_policy)
         elif len(obs_shape) == 1:
-            assert not recurrent_policy, \
-                "Recurrent policy is not implemented for the MLP controller"
-            self.base = MLPBase(obs_shape[0])
+            self.base = MLPBase(obs_shape[0], recurrent_policy)
         else:
             raise NotImplementedError
 
@@ -46,7 +43,6 @@ class Policy(nn.Module):
             action = dist.sample()
 
         action_log_probs = dist.log_probs(action)
-        dist_entropy = dist.entropy().mean()
 
         return value, action, action_log_probs, states
 
@@ -130,7 +126,7 @@ class CNNBase(nn.Module):
 
 
 class MLPBase(nn.Module):
-    def __init__(self, num_inputs):
+    def __init__(self, num_inputs, use_gru):
         super(MLPBase, self).__init__()
 
         init_ = lambda m: init(m,
@@ -143,6 +139,13 @@ class MLPBase(nn.Module):
             init_(nn.Linear(64, 64)),
             nn.Tanh()
         )
+
+        if use_gru:
+            self.gru = nn.GRUCell(64, 64)
+            nn.init.orthogonal_(self.gru.weight_ih.data)
+            nn.init.orthogonal_(self.gru.weight_hh.data)
+            self.gru.bias_ih.data.fill_(0)
+            self.gru.bias_hh.data.fill_(0)
 
         self.critic = nn.Sequential(
             init_(nn.Linear(num_inputs, 64)),
