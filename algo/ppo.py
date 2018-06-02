@@ -39,7 +39,7 @@ class PPO(object):
         dist_entropy_epoch = 0
 
         for e in range(self.ppo_epoch):
-            if hasattr(self.actor_critic, 'gru'):
+            if hasattr(self.actor_critic.base, 'gru'):
                 data_generator = rollouts.recurrent_generator(
                     advantages, self.num_mini_batch)
             else:
