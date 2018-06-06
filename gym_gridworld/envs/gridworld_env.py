@@ -76,7 +76,7 @@ class GridworldEnv(gym.Env):
         action = int(action)
         info = {'success': True}
         done = False
-        reward = -0.1
+        reward = -0.0
         nxt_agent_state = (self.agent_state[0] + self.action_pos_dict[action][0],
                            self.agent_state[1] + self.action_pos_dict[action][1])
 
