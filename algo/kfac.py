@@ -100,7 +100,7 @@ class KFACOptimizer(optim.Optimizer):
 
         def split_bias(module):
             for mname, child in module.named_children():
-                if hasattr(child, 'bias'):
+                if hasattr(child, 'bias') and child.bias is not None:
                     module._modules[mname] = SplitBias(child)
                 else:
                     split_bias(child)
