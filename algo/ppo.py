@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 
 
@@ -62,7 +63,7 @@ class PPO(object):
                                            1.0 + self.clip_param) * adv_targ
                 action_loss = -torch.min(surr1, surr2).mean()
 
-                value_loss = (return_batch - values).pow(2).mean()
+                value_loss = F.mse_loss(return_batch, values)
 
                 self.optimizer.zero_grad()
                 (value_loss * self.value_loss_coef + action_loss -
