@@ -66,6 +66,10 @@ class RolloutStorage(object):
     def feed_forward_generator(self, advantages, num_mini_batch):
         num_steps, num_processes = self.rewards.size()[0:2]
         batch_size = num_processes * num_steps
+        assert batch_size >= num_mini_batch, (
+            f"PPO requires the number processes ({num_processes}) "
+            f"* number of steps ({num_steps}) = {num_processes * num_steps} "
+            f"to be greater than or equal to the number of PPO mini batches ({num_mini_batch}).")
         mini_batch_size = batch_size // num_mini_batch
         sampler = BatchSampler(SubsetRandomSampler(range(batch_size)), mini_batch_size, drop_last=False)
         for indices in sampler:
@@ -83,6 +87,9 @@ class RolloutStorage(object):
 
     def recurrent_generator(self, advantages, num_mini_batch):
         num_processes = self.rewards.size(1)
+        assert num_processes >= num_mini_batch, (
+            f"PPO requires the number processes ({num_processes}) "
+            f"to be greater than or equal to the number of PPO mini batches ({num_mini_batch}).")
         num_envs_per_batch = num_processes // num_mini_batch
         perm = torch.randperm(num_processes)
         for start_ind in range(0, num_processes, num_envs_per_batch):
