@@ -71,9 +71,11 @@ Also I'm searching for volunteers to run all experiments on Atari and MuJoCo (wi
 It's extremely difficult to reproduce results for Reinforcement Learning methods. See ["Deep Reinforcement Learning that Matters"](https://arxiv.org/abs/1709.06560) for more information. I tried to reproduce OpenAI results as closely as possible. However, majors differences in performance can be caused even by minor differences in TensorFlow and PyTorch libraries.
 
 ### TODO
+* Fix termination loss calculation for a2oc. Right now it's being ignored.
+* Clean the code because a ton of stuff is commented out or deprecated, especially in algo/a2oc.py
 * Improve this README file. Rearrange images.
-* Improve performance of KFAC, see kfac.py for more information
-* Run evaluation for all games and algorithms
+* Improve performance of KFAC, see kfac.py for more information.
+* Run evaluation for all games and algorithms.
 
 ## Training
 
@@ -83,7 +85,7 @@ Start a `Visdom` server with `python -m visdom.server`, it will serve `http://lo
 #### A2C
 
 ```bash
-python main.py --env-name "PongNoFrameskip-v4"
+python main.py --algo a2c --env-name "PongNoFrameskip-v4"
 ```
 
 #### PPO
@@ -95,14 +97,14 @@ python main.py --env-name "PongNoFrameskip-v4" --algo ppo --use-gae --lr 2.5e-4 
 #### ACKTR
 
 ```bash
-python main.py --env-name "PongNoFrameskip-v4" --algo acktr --num-processes 32 --num-steps 20
+python main.py --algo a2c --env-name "PongNoFrameskip-v4" --algo acktr --num-processes 32 --num-steps 20
 ```
 
 ### MuJoCo
 
 I **highly** recommend to use --add-timestep argument with some mujoco environments (for example, Reacher) despite it's not a default option with OpenAI implementations.
 
-#### A2C
+#### A2OC (default algorithm is a2oc so no --algo a2oc is required)
 
 ```bash
 python main.py --env-name "Reacher-v2" --num-stack 1 --num-frames 1000000
@@ -129,7 +131,7 @@ Disclaimer: I might have used different hyper-parameters to train these models.
 ### Atari
 
 ```bash
-python enjoy.py --load-dir trained_models/a2c --env-name "PongNoFrameskip-v4" --num-stack 4
+python enjoy.py --algo a2oc --load-dir trained_models/a2c --env-name "PongNoFrameskip-v4" --num-stack 4
 ```
 
 ### MuJoCo
