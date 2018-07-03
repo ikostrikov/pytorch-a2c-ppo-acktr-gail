@@ -1,4 +1,7 @@
-# pytorch-a2c-ppo-acktr
+# pytorch-a2c-a2oc-ppo-acktr
+
+## Update 07/04/2018: Added a2oc! Currently the termination loss calculation is ignored thus the options are random and the policy over options network doesn't learn or converge. This will hopefully be fixed soon!
+
 
 ## Update 10/06/2017: added enjoy.py and a link to pretrained models!
 ## Update 09/27/2017: now supports both Atari and MuJoCo/Roboschool!
