@@ -69,7 +69,8 @@ def load_data(indir, smooth, bin_size):
     result = []
     timesteps = 0
     for i in range(len(datas)):
-        result.append([timesteps, datas[i][-1]])
+        # result.append([timesteps, datas[i][-1]])
+        result.append([timesteps, datas[i][1]])  # take the number of steps, not the reward
         timesteps += datas[i][1]
 
     if len(result) < bin_size:
@@ -116,7 +117,7 @@ def visdom_plot(viz, win, folder, game, name, num_steps, bin_size=100, smooth=1)
     plt.xlim(0, num_steps * 1.01)
 
     plt.xlabel('Number of Timesteps')
-    plt.ylabel('Rewards')
+    plt.ylabel('Steps in Episode')
 
     plt.title(game)
     plt.legend(loc=4)
