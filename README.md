@@ -1,6 +1,8 @@
 # pytorch-a2c-a2oc-ppo-acktr
 
-## Update 07/04/2018: Added a2oc! Currently the termination loss calculation is ignored thus the options are random and the policy over options network doesn't learn or converge. This will hopefully be fixed soon!
+## Update 07/04/2018: Added a2oc!
+
+## WARNING: Currently the termination loss calculation for a2oc is ignored thus the options are random and the policy over options network doesn't learn or converge. This will hopefully be fixed soon! Also, get_options_value doesn't return the correct value either... it returns exactly the value of "value" and then they cancel each other out when calculating termination loss, again leading to a bad result. Point is - termination loss is broken and therefore you shouldn't run a2oc!
 
 
 ## Update 10/06/2017: added enjoy.py and a link to pretrained models!
