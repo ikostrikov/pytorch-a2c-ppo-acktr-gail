@@ -19,6 +19,8 @@ class View(nn.Module):
 class A2OC(object):
 	def __init__(self, envs, args):
 
+		self.args = args
+
 		self.num_threads = args.num_processes
 		self.num_options = args.num_options
 		self.num_steps = args.num_steps
@@ -68,7 +70,10 @@ class A2OC(object):
 		obs, reward, done, info = self.envs.step(cpu_actions)
 
 		reward = np.add(reward, self.actor_critic.terminations * self.actor_critic.delib)
-		reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float().cuda()
+		reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
+
+		if self.args.cuda:
+			reward = reward.cuda()
 
 		return value, action, action_log_prob, states, obs, reward, done, info
 
