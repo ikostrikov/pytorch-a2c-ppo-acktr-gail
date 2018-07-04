@@ -46,6 +46,9 @@ class A2OC(object):
 		                                 self.policy_over_options,
 		                                 args)
 
+		if args.cuda:
+			self.actor_critic.cuda()
+
 		self.value_loss_coef = args.value_loss_coef
 		self.entropy_coef = args.entropy_coef
 		self.termination_coef = args.termination_coef
@@ -86,7 +89,6 @@ class A2OC(object):
 				rollouts.actions.view(-1, action_shape))
 
 		values = values.view(num_steps, num_processes, 1)   # n_steps x n_processes x 1
-		options_value = options_value.view(num_steps, num_processes, 1)     # n_steps x n_processes x 1
 		action_log_probs = action_log_probs.view(num_steps, num_processes, 1)   # n_steps x n_processes x 1
 
 		advantages = rollouts.returns[:-1] - values     # n_steps x n_processes x 1
@@ -95,8 +97,9 @@ class A2OC(object):
 		action_loss = -(advantages.detach() * action_log_probs).mean()  # no dimension, just scalar
 
 		# TODO: fix termination loss
-		# termination_loss = (values - options_value + self.actor_critic.terminations_history * self.actor_critic.delib).mean()  # n_steps x n_processes x 1
-
+		options_value = options_value.view(num_steps * num_processes)     # n_steps * n_processes
+		values = values.view(num_steps * num_processes)   # n_steps x n_processes x 1
+		termination_loss = ((values - options_value + self.actor_critic.delib).detach() * self.actor_critic.terminations_history).mean()  # n_steps x n_processes x 1
 		# TODO: add termination loss to backward calculation. termination_loss * self.termination_coef (pay attention to +/-)
 		self.optimizer.zero_grad()
 		(value_loss * self.value_loss_coef + action_loss -
@@ -106,8 +109,8 @@ class A2OC(object):
 
 		self.optimizer.step()
 
-		self.actor_critic.options_history = torch.LongTensor([])
-		self.actor_critic.terminations_history = torch.FloatTensor([])
+		self.actor_critic.options_history = torch.tensor([]).long()
+		self.actor_critic.terminations_history = torch.tensor([])
 
 		# TODO: replace the 0 with the termination loss
 		return value_loss.item(), action_loss.item(), 0, dist_entropy.item()

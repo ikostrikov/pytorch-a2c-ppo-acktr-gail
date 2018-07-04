@@ -9,6 +9,9 @@ import numpy as np
 class OptionCritic(nn.Module):
 	def __init__(self, base_net, action_head, value_head, termination_head, policy_over_options, args):
 		super(OptionCritic, self).__init__()
+
+		torch.set_default_tensor_type(torch.cuda.FloatTensor if args.cuda else torch.FloatTensor)
+
 		self.base_net = base_net
 		self.action_head = action_head
 		self.value_head = value_head
@@ -24,17 +27,17 @@ class OptionCritic(nn.Module):
 		self.lr = args.lr
 		self.alpha = args.alpha
 		self.delib = args.delib
-		self.eps_thresh = torch.FloatTensor([args.eps_thresh])
+		self.eps_thresh = torch.tensor([args.eps_thresh])
 
 		self.num_threads = args.num_processes
 		self.num_options = args.num_options
 		self.num_steps = args.num_steps
 
-		self.current_options = torch.LongTensor(self.num_threads).random_(0, self.num_options).unsqueeze(dim=1)
-		self.options_history = torch.LongTensor([])
+		self.current_options = torch.ones(self.num_threads).random_(0, self.num_options).long().unsqueeze(dim=1)
+		self.options_history = torch.ones(0).long()
 
 		self.terminations = torch.zeros(self.num_threads)
-		self.terminations_history = torch.FloatTensor([])
+		self.terminations_history = torch.zeros(0)
 
 	def act(self, inputs, states, masks, deterministic=False):
 		actor_features = self.base_net.main(inputs)
@@ -65,14 +68,16 @@ class OptionCritic(nn.Module):
 		return value, action, action_log_prob, states
 
 	def select_new_option(self, inputs):
-		dist = self.policy_over_options(inputs) # dimension: num_threads x num_options
+		dist = self.policy_over_options(inputs)  # dimension: num_threads x num_options
 		dist = torch.distributions.Categorical(dist)
 
 		dist_options = dist.sample().squeeze()[self.terminations == 1]
-		random_options = torch.LongTensor(self.num_threads).random_(0, self.num_options).squeeze()[self.terminations == 1]
+		random_options = torch.ones(self.num_threads).random_(0, self.num_options).long().squeeze()[
+			self.terminations == 1]
 		random_numbers = torch.rand(self.num_threads).squeeze()[self.terminations == 1]
 
-		new_options = torch.where(random_numbers > self.eps_thresh.expand_as(random_numbers), dist_options, random_options)
+		new_options = torch.where(random_numbers > self.eps_thresh.expand_as(random_numbers), dist_options,
+		                          random_options)
 
 		old_options = self.current_options.squeeze().clone()
 		self.current_options = self.current_options.squeeze()
@@ -101,7 +106,6 @@ class OptionCritic(nn.Module):
 		actor_features = self.base_net.main(inputs)
 		action_prob = self.action_head(actor_features)  # dimension: num_threads x num_options x num_actions
 
-		# TODO: get the right option for each thread so that instead of having a 80x8x5 (N_STEPxP, O, A) we will have (N_STEPxP, A)
 		count = torch.arange(self.num_steps * self.num_threads).long()
 		indices = self.options_history.squeeze()
 		action_prob = action_prob[count, indices, :]
@@ -116,8 +120,9 @@ class OptionCritic(nn.Module):
 
 		return value, action_log_prob, dist_entropy, options_value
 
+	# TODO: fix this function
 	def get_options_value(self, actor_features):
-		value = self.value_head(actor_features).gather(1, self.options_history)  # dimension: num_steps * num_threads x num_options
+		value = self.value_head(actor_features).gather(1, self.options_history)  # dimension: num_steps * num_threads x 1
 		value = self.policy_over_options(actor_features) * value
 		return torch.sum(value, dim=1).unsqueeze(1)
 
@@ -136,7 +141,7 @@ class OptionCritic(nn.Module):
 			dist = torch.distributions.Categorical(dist)
 
 			dist_options = dist.sample().squeeze()
-			random_options = torch.LongTensor(num_threads).random_(0, self.num_options).squeeze()
+			random_options = torch.ones(num_threads).random_(0, self.num_options).long().squeeze()
 			random_numbers = torch.rand(num_threads)
 
 			self.current_options = torch.where(random_numbers > self.eps_thresh.expand_as(random_numbers),

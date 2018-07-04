@@ -6,7 +6,7 @@ import gym_gridworld
 
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
-    parser.add_argument('--algo', default='a2c',
+    parser.add_argument('--algo', default='a2oc',
                         help='algorithm to use: a2c | a2oc | ppo | acktr (default: a2oc)')
     parser.add_argument('--lr', type=float, default=7e-4,
                         help='learning rate (default: 7e-4)')

@@ -24,6 +24,9 @@ if args.recurrent_policy:
 num_updates = int(args.num_frames) // args.num_steps // args.num_processes
 
 torch.manual_seed(args.seed)
+
+torch.set_default_tensor_type(torch.cuda.FloatTensor if args.cuda else torch.FloatTensor)
+
 if args.cuda:
 	torch.cuda.manual_seed(args.seed)
 
