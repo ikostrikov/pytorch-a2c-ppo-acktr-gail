@@ -68,9 +68,7 @@ class A2OC(object):
 		obs, reward, done, info = self.envs.step(cpu_actions)
 
 		reward = np.add(reward, self.actor_critic.terminations * self.actor_critic.delib)
-		reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
-
-		# done = torch.IntTensor(done.astype(int)) | self.actor_critic.terminations.int()
+		reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float().cuda()
 
 		return value, action, action_log_prob, states, obs, reward, done, info
 
