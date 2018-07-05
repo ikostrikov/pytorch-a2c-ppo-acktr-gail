@@ -99,7 +99,6 @@ class A2OC(object):
 
 		action_loss = -(advantages.detach() * action_log_probs).mean()  # no dimension, just scalar
 
-		# TODO: fix termination loss
 		options_value = options_value.view(num_steps * num_processes)     # n_steps * n_processes
 		values = values.view(num_steps * num_processes)   # n_steps x n_processes x 1
 
@@ -118,7 +117,6 @@ class A2OC(object):
 		self.actor_critic.options_history = torch.tensor([]).long()
 		self.actor_critic.terminations_history = torch.tensor([])
 
-		# TODO: replace the 0 with the termination loss
 		return value_loss.item(), action_loss.item(), termination_loss, dist_entropy.item()
 
 	def get_value(self, inputs, states, masks):

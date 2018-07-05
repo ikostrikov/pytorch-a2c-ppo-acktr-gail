@@ -120,7 +120,6 @@ class OptionCritic(nn.Module):
 
 		return value, action_log_prob, dist_entropy, options_value
 
-	# TODO: fix this function
 	def get_options_value(self, actor_features):
 		return self.value_head(actor_features).gather(1, self.options_history)  # dimension: num_steps * num_threads x 1
 
