@@ -22,12 +22,12 @@ class OptionCritic(nn.Module):
 
 		self.value_loss_coef = args.value_loss_coef
 		self.entropy_coef = args.entropy_coef
-		self.termination_coef = args.termination_coef
+		self.termination_loss_coef = args.termination_loss_coef
 		self.max_grad_norm = args.max_grad_norm
 		self.lr = args.lr
 		self.alpha = args.alpha
 		self.delib = args.delib
-		self.eps_thresh = torch.tensor([args.eps_thresh])
+		self.options_epsilon = torch.tensor([args.options_epsilon])
 
 		self.num_threads = args.num_processes
 		self.num_options = args.num_options
@@ -76,7 +76,7 @@ class OptionCritic(nn.Module):
 			self.terminations == 1]
 		random_numbers = torch.rand(self.num_threads).squeeze()[self.terminations == 1]
 
-		new_options = torch.where(random_numbers > self.eps_thresh.expand_as(random_numbers), dist_options,
+		new_options = torch.where(random_numbers > self.options_epsilon.expand_as(random_numbers), dist_options,
 		                          random_options)
 
 		old_options = self.current_options.squeeze().clone()
@@ -122,9 +122,7 @@ class OptionCritic(nn.Module):
 
 	# TODO: fix this function
 	def get_options_value(self, actor_features):
-		value = self.value_head(actor_features).gather(1, self.options_history)  # dimension: num_steps * num_threads x 1
-		value = self.policy_over_options(actor_features) * value
-		return torch.sum(value, dim=1).unsqueeze(1)
+		return self.value_head(actor_features).gather(1, self.options_history)  # dimension: num_steps * num_threads x 1
 
 	def act_enjoy(self, inputs, states, masks, deterministic=False):
 		num_threads = 1
@@ -143,9 +141,12 @@ class OptionCritic(nn.Module):
 			dist_options = dist.sample().squeeze()
 			random_options = torch.ones(num_threads).random_(0, self.num_options).long().squeeze()
 			random_numbers = torch.rand(num_threads)
-
-			self.current_options = torch.where(random_numbers > self.eps_thresh.expand_as(random_numbers),
+			old_options = self.current_options.clone()
+			self.current_options = torch.where(random_numbers > self.options_epsilon.expand_as(random_numbers),
 			                                   dist_options, random_options)
+
+			if old_options != self.current_options:
+				print(old_options, "->", self.current_options)
 
 		action_prob = self.action_head(actor_features).squeeze()[self.current_options]  # dimension: num_threads x num_options x num_actions
 		dist = torch.distributions.Categorical(action_prob)

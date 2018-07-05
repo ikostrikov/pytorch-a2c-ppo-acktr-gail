@@ -53,7 +53,7 @@ class A2OC(object):
 
 		self.value_loss_coef = args.value_loss_coef
 		self.entropy_coef = args.entropy_coef
-		self.termination_coef = args.termination_coef
+		self.termination_loss_coef = args.termination_loss_coef
 		self.max_grad_norm = args.max_grad_norm
 
 		self.state_size = self.actor_critic.state_size
@@ -102,11 +102,14 @@ class A2OC(object):
 		# TODO: fix termination loss
 		options_value = options_value.view(num_steps * num_processes)     # n_steps * n_processes
 		values = values.view(num_steps * num_processes)   # n_steps x n_processes x 1
-		termination_loss = ((values - options_value + self.actor_critic.delib).detach() * self.actor_critic.terminations_history).mean()  # n_steps x n_processes x 1
-		# TODO: add termination loss to backward calculation. termination_loss * self.termination_coef (pay attention to +/-)
+
+		V = options_value.max() * (1 - self.args.options_epsilon) + (self.args.options_epsilon * options_value.mean())
+		V = V.detach()
+
+		termination_loss = ((values - V + self.actor_critic.delib).detach() * self.actor_critic.terminations_history).mean()  # n_steps x n_processes x 1
 		self.optimizer.zero_grad()
 		(value_loss * self.value_loss_coef + action_loss -
-		 dist_entropy * self.entropy_coef).backward()
+		 dist_entropy * self.entropy_coef - termination_loss * self.termination_loss_coef).backward()
 
 		nn.utils.clip_grad_norm_(self.actor_critic.parameters(), self.max_grad_norm)
 
@@ -116,7 +119,7 @@ class A2OC(object):
 		self.actor_critic.terminations_history = torch.tensor([])
 
 		# TODO: replace the 0 with the termination loss
-		return value_loss.item(), action_loss.item(), 0, dist_entropy.item()
+		return value_loss.item(), action_loss.item(), termination_loss, dist_entropy.item()
 
 	def get_value(self, inputs, states, masks):
 		return self.actor_critic.get_value(inputs)

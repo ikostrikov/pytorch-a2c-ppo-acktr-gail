@@ -82,6 +82,7 @@ if args.env_name.find('Bullet') > -1:
             torsoId = i
 
 while True:
+    time.sleep(1. / 2)
     with torch.no_grad():
         action = actor_critic.act_enjoy(current_obs, states, masks)
     cpu_actions = action.squeeze(1).cpu().numpy()
