@@ -9,11 +9,6 @@ from baselines.common.vec_env.vec_normalize import VecNormalize
 
 from envs import make_env
 
-import time
-
-import gym_gridworld
-
-
 parser = argparse.ArgumentParser(description='RL')
 parser.add_argument('--algo', default='a2oc',
                     help='algorithm to use: a2c | a2oc | ppo | acktr (default: a2oc)')
@@ -35,7 +30,7 @@ args = parser.parse_args()
 env = make_env(args.env_name, args.seed, 0, None, args.add_timestep)
 env = DummyVecEnv([env])
 
-actor_critic, ob_rms = torch.load(os.path.join(args.load_dir, args.algo, args.env_name + ".pt"))
+actor_critic, ob_rms = torch.load(os.path.join(args.load_dir, args.algo, args.env_name + ".pt"), map_location='cpu')
 
 
 if len(env.observation_space.shape) == 1:
@@ -82,15 +77,13 @@ if args.env_name.find('Bullet') > -1:
             torsoId = i
 
 while True:
-    time.sleep(1. / 2)
     with torch.no_grad():
         action = actor_critic.act_enjoy(current_obs, states, masks)
     cpu_actions = action.squeeze(1).cpu().numpy()
     print(cpu_actions)
     # Observe reward and next obs
     obs, reward, done, _ = env.step(cpu_actions)
-    if done:
-        print("done!", time.time())
+
     masks.fill_(0.0 if done else 1.0)
 
     if current_obs.dim() == 4:

@@ -29,18 +29,6 @@ def init_normc_(weight, gain=1):
 	weight *= gain / torch.sqrt(weight.pow(2).sum(1, keepdim=True))
 
 
-def initializer(m):
-	"""
-	:param m:
-	:return:
-	init_ = lambda m: init(m,
-                           nn.init.orthogonal_,
-                           lambda x: nn.init.constant_(x, 0),
-                           nn.init.calculate_gain('relu'))
-	"""
-	return init(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), nn.init.calculate_gain('relu'))
-
-
 class Flatten(nn.Module):
 	def forward(self, x):
 		return x.view(x.size(0), -1)

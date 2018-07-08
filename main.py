@@ -121,12 +121,6 @@ def main():
 						rollouts.states[step],
 						rollouts.masks[step])
 
-			# cpu_actions = action.squeeze(1).cpu().numpy()
-			#
-			# # Observe reward and next obs
-			# obs, reward, done, info = envs.step(cpu_actions)
-			# reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
-
 			episode_rewards += reward
 
 			# If done then clean the history of observations.

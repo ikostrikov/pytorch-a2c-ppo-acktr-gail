@@ -2,9 +2,7 @@ import torch
 import torch.nn as nn
 
 from distributions import Categorical, DiagGaussian
-from utils import init, init_normc_, initializer, Flatten
-
-import numpy as np
+from utils import init, init_normc_, Flatten
 
 class OptionCritic(nn.Module):
 	def __init__(self, base_net, action_head, value_head, termination_head, policy_over_options, args):
@@ -220,16 +218,20 @@ class CNNBase(nn.Module):
 	def __init__(self, num_inputs, use_gru):
 		super(CNNBase, self).__init__()
 
+		init_ = lambda m: init(m,
+		                       nn.init.orthogonal_,
+		                       lambda x: nn.init.constant_(x, 0))
+
 		self.main = nn.Sequential(
-				initializer(nn.Conv2d(num_inputs, 32, kernel_size=(4, 4), stride=2)),
-				nn.ReLU(),
-				initializer(nn.Conv2d(32, 64, kernel_size=(3, 3), stride=2)),
-				nn.ReLU(),
-				Flatten(),
-				initializer(nn.Linear(64, 48)),
-				nn.ReLU(),
-				initializer(nn.Linear(48, 32)),
-				nn.ReLU()
+			init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
+			nn.ReLU(),
+			init_(nn.Conv2d(32, 64, 4, stride=2)),
+			nn.ReLU(),
+			init_(nn.Conv2d(64, 32, 3, stride=1)),
+			nn.ReLU(),
+            Flatten(),
+            init_(nn.Linear(32 * 7 * 7, 512)),
+            nn.ReLU()
 		)
 
 		if use_gru:
@@ -239,11 +241,7 @@ class CNNBase(nn.Module):
 			self.gru.bias_ih.data.fill_(0)
 			self.gru.bias_hh.data.fill_(0)
 
-		init_ = lambda m: init(m,
-		                       nn.init.orthogonal_,
-		                       lambda x: nn.init.constant_(x, 0))
-
-		self.critic_linear = init_(nn.Linear(32, 1))
+		self.critic_linear = init_(nn.Linear(512, 1))
 
 		self.train()
 
@@ -256,7 +254,7 @@ class CNNBase(nn.Module):
 
 	@property
 	def output_size(self):
-		return 32
+		return 512
 
 	def forward(self, inputs, states, masks):
 		x = self.main(inputs / 255.0)
