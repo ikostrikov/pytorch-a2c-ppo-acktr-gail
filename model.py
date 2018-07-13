@@ -11,14 +11,12 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, recurrent_policy):
+    def __init__(self, obs_shape, action_space, recurrent):
         super(Policy, self).__init__()
         if len(obs_shape) == 3:
-            self.base = CNNBase(obs_shape[0], recurrent_policy)
+            self.base = CNNBase(obs_shape[0], recurrent)
         elif len(obs_shape) == 1:
-            assert not recurrent_policy, \
-                "Recurrent policy is not implemented for the MLP controller"
-            self.base = MLPBase(obs_shape[0])
+            self.base = MLPBase(obs_shape[0], recurrent)
         else:
             raise NotImplementedError
 
@@ -64,14 +62,67 @@ class Policy(nn.Module):
         return value, action_log_probs, dist_entropy, states
 
 
-class CNNBase(nn.Module):
-    def __init__(self, num_inputs, use_gru):
-        super(CNNBase, self).__init__()
+class NNBase(nn.Module):
+
+    def __init__(self, recurrent, gru_input_size, hidden_size):
+        super(NNBase, self).__init__()
+
+        self._hidden_size = hidden_size
+
+        if recurrent:
+            self.gru = nn.GRUCell(gru_input_size, hidden_size)
+            nn.init.orthogonal_(self.gru.weight_ih.data)
+            nn.init.orthogonal_(self.gru.weight_hh.data)
+            self.gru.bias_ih.data.fill_(0)
+            self.gru.bias_hh.data.fill_(0)
+
+    @property
+    def state_size(self):
+        if hasattr(self, 'gru'):
+            return self._hidden_size
+        else:
+            return 1
+
+    @property
+    def output_size(self):
+        return self._hidden_size
+
+    def _forward_gru(self, x, states, masks):
+        if x.size(0) == states.size(0):
+            x = states = self.gru(x, states * masks)
+        else:
+            # x is a (T, N, -1) tensor that has been flatten to (T * N, -1)
+            N = states.size(0)
+            T = int(x.size(0) / N)
+
+            # unflatten
+            x = x.view(T, N, x.size(1))
+
+            # Same deal with masks
+            masks = masks.view(T, N, 1)
+
+            outputs = []
+            for i in range(T):
+                hx = states = self.gru(x[i], states * masks[i])
+                outputs.append(hx)
+
+            # assert len(outputs) == T
+            # x is a (T, N, -1) tensor
+            x = torch.stack(outputs, dim=0)
+            # flatten
+            x = x.view(T * N, -1)
+
+        return x, states
+
+
+class CNNBase(NNBase):
+    def __init__(self, num_inputs, recurrent, hidden_size=512):
+        super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
 
         init_ = lambda m: init(m,
-                      nn.init.orthogonal_,
-                      lambda x: nn.init.constant_(x, 0),
-                      nn.init.calculate_gain('relu'))
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0),
+            nn.init.calculate_gain('relu'))
 
         self.main = nn.Sequential(
             init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
@@ -81,103 +132,63 @@ class CNNBase(nn.Module):
             init_(nn.Conv2d(64, 32, 3, stride=1)),
             nn.ReLU(),
             Flatten(),
-            init_(nn.Linear(32 * 7 * 7, 512)),
+            init_(nn.Linear(32 * 7 * 7, hidden_size)),
             nn.ReLU()
         )
 
-        if use_gru:
-            self.gru = nn.GRUCell(512, 512)
-            nn.init.orthogonal_(self.gru.weight_ih.data)
-            nn.init.orthogonal_(self.gru.weight_hh.data)
-            self.gru.bias_ih.data.fill_(0)
-            self.gru.bias_hh.data.fill_(0)
-
         init_ = lambda m: init(m,
-          nn.init.orthogonal_,
-          lambda x: nn.init.constant_(x, 0))
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0))
 
-        self.critic_linear = init_(nn.Linear(512, 1))
+        self.critic_linear = init_(nn.Linear(hidden_size, 1))
 
         self.train()
-
-    @property
-    def state_size(self):
-        if hasattr(self, 'gru'):
-            return 512
-        else:
-            return 1
-
-    @property
-    def output_size(self):
-        return 512
 
     def forward(self, inputs, states, masks):
         x = self.main(inputs / 255.0)
 
         if hasattr(self, 'gru'):
-            if inputs.size(0) == states.size(0):
-                x = states = self.gru(x, states * masks)
-            else:
-                # x is a (T, N, -1) tensor that has been flatten to (T * N, -1)
-                N = states.size(0)
-                T = int(x.size(0) / N)
-
-                # unflatten
-                x = x.view(T, N, x.size(1))
-
-                # Same deal with masks
-                masks = masks.view(T, N, 1)
-
-                outputs = []
-                for i in range(T):
-                    hx = states = self.gru(x[i], states * masks[i])
-                    outputs.append(hx)
-
-                # assert len(outputs) == T
-                # x is a (T, N, -1) tensor
-                x = torch.stack(outputs, dim=0)
-                # flatten
-                x = x.view(T * N, -1)
+            x, states = self._forward_gru(x, states, masks)
 
         return self.critic_linear(x), x, states
 
 
-class MLPBase(nn.Module):
-    def __init__(self, num_inputs):
-        super(MLPBase, self).__init__()
+class MLPBase(NNBase):
+    def __init__(self, num_inputs, recurrent, hidden_size=64):
+        super(MLPBase, self).__init__(recurrent, num_inputs, hidden_size)
+
+        if recurrent:
+            num_inputs = hidden_size
 
         init_ = lambda m: init(m,
-              init_normc_,
-              lambda x: nn.init.constant_(x, 0))
+            init_normc_,
+            lambda x: nn.init.constant_(x, 0))
 
         self.actor = nn.Sequential(
-            init_(nn.Linear(num_inputs, 64)),
+            init_(nn.Linear(num_inputs, hidden_size)),
             nn.Tanh(),
-            init_(nn.Linear(64, 64)),
+            init_(nn.Linear(hidden_size, hidden_size)),
             nn.Tanh()
         )
 
         self.critic = nn.Sequential(
-            init_(nn.Linear(num_inputs, 64)),
+            init_(nn.Linear(num_inputs, hidden_size)),
             nn.Tanh(),
-            init_(nn.Linear(64, 64)),
+            init_(nn.Linear(hidden_size, hidden_size)),
             nn.Tanh()
         )
 
-        self.critic_linear = init_(nn.Linear(64, 1))
+        self.critic_linear = init_(nn.Linear(hidden_size, 1))
 
         self.train()
 
-    @property
-    def state_size(self):
-        return 1
-
-    @property
-    def output_size(self):
-        return 64
-
     def forward(self, inputs, states, masks):
-        hidden_critic = self.critic(inputs)
-        hidden_actor = self.actor(inputs)
+        x = inputs
+
+        if hasattr(self, 'gru'):
+            x, states = self._forward_gru(x, states, masks)
+
+        hidden_critic = self.critic(x)
+        hidden_actor = self.actor(x)
 
         return self.critic_linear(hidden_critic), hidden_actor, states
