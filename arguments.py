@@ -8,12 +8,12 @@ def get_args():
                         help='algorithm to use: a2c | a2oc | ppo | acktr (default: a2oc)')
     parser.add_argument('--lr', type=float, default=7e-4,
                         help='learning rate (default: 7e-4)')
-    parser.add_argument('--delib', type=float, default=0,
-                        help='deliberation cost for switching between options in A2OC (default: 0)')
+    parser.add_argument('--delib', type=float, default=0.0,
+                        help='deliberation cost for switching between options in A2OC (default: 0.0)')
     parser.add_argument('--num-options', type=int, default=8,
                         help='number of options in A2OC (default: 8)')
-    parser.add_argument('--options-epsilon', type=float, default=1e-2,
-                        help='epsilon for epsilon soft policy (default: 1e-2)')
+    parser.add_argument('--options-epsilon', type=float, default=0.1,
+                        help='epsilon for epsilon soft policy (default: 0.1)')
     parser.add_argument('--eps', type=float, default=1e-5,
                         help='RMSprop optimizer epsilon (default: 1e-5)')
     parser.add_argument('--alpha', type=float, default=0.99,
@@ -26,8 +26,8 @@ def get_args():
                         help='gae parameter (default: 0.95)')
     parser.add_argument('--entropy-coef', type=float, default=0.01,
                         help='entropy term coefficient (default: 0.01)')
-    parser.add_argument('--termination-loss-coef', type=float, default=0.01,
-                        help='termination loss coefficient (default: 0.01)')
+    parser.add_argument('--termination-loss-coef', type=float, default=1.0,
+                        help='termination loss coefficient (default: 1.0)')
     parser.add_argument('--value-loss-coef', type=float, default=0.5,
                         help='value loss coefficient (default: 0.5)')
     parser.add_argument('--max-grad-norm', type=float, default=0.5,

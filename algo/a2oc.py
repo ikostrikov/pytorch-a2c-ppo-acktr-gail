@@ -38,14 +38,11 @@ class A2OC(object):
 		self.options_termination_head = nn.Sequential(nn.Linear(self.base.output_size, self.num_options),
 		                                              nn.Sigmoid())
 		self.options_value_head = nn.Linear(self.base.output_size, self.num_options)
-		self.policy_over_options = nn.Sequential(nn.Linear(self.base.output_size, self.num_options),
-		                                         nn.Softmax(1))
 
 		self.actor_critic = OptionCritic(self.base,
 		                                 self.options_action_head,
 		                                 self.options_value_head,
 		                                 self.options_termination_head,
-		                                 self.policy_over_options,
 		                                 args)
 
 		if args.cuda:
@@ -91,24 +88,20 @@ class A2OC(object):
 				rollouts.masks[:-1].view(-1, 1),
 				rollouts.actions.view(-1, action_shape))
 
-		values = values.view(num_steps, num_processes, 1)   # n_steps x n_processes x 1
-		action_log_probs = action_log_probs.view(num_steps, num_processes, 1)   # n_steps x n_processes x 1
-
-		advantages = rollouts.returns[:-1] - values     # n_steps x n_processes x 1
+		advantages = rollouts.returns[:-1].view_as(values) - values     # (n_steps * n_processes) x 1
 		value_loss = advantages.pow(2).mean()   # no dimension, just scalar
 
-		action_loss = (advantages.detach() * action_log_probs).mean()  # no dimension, just scalar
+		action_loss = -(advantages.detach() * action_log_probs).mean()  # no dimension, just scalar
 
-		options_value = options_value.view(num_steps * num_processes)     # n_steps * n_processes
-		values = values.view(num_steps * num_processes)   # n_steps x n_processes x 1
+		V = options_value.max(1)[0] * (1 - self.actor_critic.options_epsilon) + (self.actor_critic.options_epsilon * options_value.mean(1)[0])
 
-		V = options_value.max() * (1 - self.args.options_epsilon) + (self.args.options_epsilon * options_value.mean())
-		V = V.detach()
+		termination_loss = (values.squeeze() - V + self.actor_critic.delib)
 
-		termination_loss = ((values - V + self.actor_critic.delib).detach() * self.actor_critic.terminations_history).mean()  # n_steps x n_processes x 1
+		termination_loss = (termination_loss.detach() * self.actor_critic.terminations_history).mean()  # n_steps x n_processes x 1
 		self.optimizer.zero_grad()
-		(value_loss * self.value_loss_coef - action_loss -
-		 dist_entropy * self.entropy_coef + termination_loss * self.termination_loss_coef).backward()
+		cost = self.args.num_steps * (value_loss * self.value_loss_coef + action_loss -
+		 dist_entropy * self.entropy_coef + termination_loss * self.termination_loss_coef)
+		cost.backward()
 
 		nn.utils.clip_grad_norm_(self.actor_critic.parameters(), self.max_grad_norm)
 
@@ -117,7 +110,7 @@ class A2OC(object):
 		self.actor_critic.options_history = torch.tensor([]).long()
 		self.actor_critic.terminations_history = torch.tensor([])
 
-		return value_loss.item(), action_loss.item(), termination_loss, dist_entropy.item()
+		return value_loss.item(), action_loss.item(), termination_loss.item(), dist_entropy.item()
 
 	def get_value(self, inputs, states, masks):
 		return self.actor_critic.get_value(inputs)

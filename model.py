@@ -5,7 +5,7 @@ from distributions import Categorical, DiagGaussian
 from utils import init, init_normc_, Flatten
 
 class OptionCritic(nn.Module):
-	def __init__(self, base_net, action_head, value_head, termination_head, policy_over_options, args):
+	def __init__(self, base_net, action_head, value_head, termination_head, args):
 		super(OptionCritic, self).__init__()
 
 		torch.set_default_tensor_type(torch.cuda.FloatTensor if args.cuda else torch.FloatTensor)
@@ -14,7 +14,6 @@ class OptionCritic(nn.Module):
 		self.action_head = action_head
 		self.value_head = value_head
 		self.termination_head = termination_head
-		self.policy_over_options = policy_over_options
 
 		self.state_size = self.base_net.state_size
 
@@ -44,8 +43,8 @@ class OptionCritic(nn.Module):
 		                                                                 self.current_options).squeeze()  # dimension: num_threads x 1
 		rand_num = torch.rand(1)
 		self.terminations = torch.where(self.terminations > rand_num,
-		                                torch.zeros(self.num_threads),
-		                                torch.ones(self.num_threads))
+		                                torch.ones(self.num_threads),
+		                                torch.zeros(self.num_threads))
 
 		self.select_new_option(actor_features)
 
@@ -65,23 +64,20 @@ class OptionCritic(nn.Module):
 
 		return value, action, action_log_prob, states
 
-	def select_new_option(self, inputs):
-		dist = self.policy_over_options(inputs)  # dimension: num_threads x num_options
-		dist = torch.distributions.Categorical(dist)
+	def select_new_option(self, actor_features):
+		values = self.value_head(actor_features)  # dimension: num_threads x num_options
 
-		dist_options = dist.sample().squeeze()[self.terminations == 1]
+		new_options = torch.argmax(values, 1)[self.terminations == 1]
 		random_options = torch.ones(self.num_threads).random_(0, self.num_options).long().squeeze()[
 			self.terminations == 1]
 		random_numbers = torch.rand(self.num_threads).squeeze()[self.terminations == 1]
 
-		new_options = torch.where(random_numbers > self.options_epsilon.expand_as(random_numbers), dist_options,
+		new_options = torch.where(random_numbers > self.options_epsilon.expand_as(random_numbers), new_options,
 		                          random_options)
 
-		old_options = self.current_options.squeeze().clone()
 		self.current_options = self.current_options.squeeze()
 		self.current_options[self.terminations == 1] = new_options
 
-		self.terminations[old_options == self.current_options] = 0
 		self.current_options = self.current_options.unsqueeze(-1)
 		self.options_history = torch.cat((self.options_history, self.current_options), dim=0)
 		self.terminations_history = torch.cat((self.terminations_history, self.terminations), dim=0)
@@ -114,12 +110,12 @@ class OptionCritic(nn.Module):
 		dist_entropy = dist.entropy().mean()
 
 		# The expectancy of the value given state and policy over options
-		options_value = self.get_options_value(actor_features)  # dimension: num_threads x 1
+		options_value = self.get_options_value(actor_features)  # dimension: (num_threads * num_steps) x num_options
 
 		return value, action_log_prob, dist_entropy, options_value
 
 	def get_options_value(self, actor_features):
-		return self.value_head(actor_features).gather(1, self.options_history)  # dimension: num_steps * num_threads x 1
+		return self.value_head(actor_features)
 
 	def act_enjoy(self, inputs, states, masks, deterministic=False):
 		num_threads = 1
@@ -131,16 +127,17 @@ class OptionCritic(nn.Module):
 		self.terminations = self.termination_head(actor_features)[count, self.current_options].squeeze()  # dimension: num_threads x 1
 		rand_num = torch.rand(1)
 
-		if self.terminations > rand_num:
-			dist = self.policy_over_options(actor_features) # dimension: num_threads x num_options
-			dist = torch.distributions.Categorical(dist)
+		print (self.terminations, rand_num)
 
-			dist_options = dist.sample().squeeze()
+		if self.terminations > rand_num:
+			values = self.value_head(actor_features)  # dimension: num_threads x num_options
+			# print(values)
+			new_options = torch.argmax(values, 1)
 			random_options = torch.ones(num_threads).random_(0, self.num_options).long().squeeze()
 			random_numbers = torch.rand(num_threads)
 			old_options = self.current_options.clone()
 			self.current_options = torch.where(random_numbers > self.options_epsilon.expand_as(random_numbers),
-			                                   dist_options, random_options)
+			                                   new_options, random_options)
 
 			if old_options != self.current_options:
 				print(old_options, "->", self.current_options)
@@ -229,7 +226,7 @@ class CNNBase(nn.Module):
 			nn.ReLU(),
 			init_(nn.Conv2d(64, 32, 3, stride=1)),
 			nn.ReLU(),
-            Flatten(),
+			Flatten(),
             init_(nn.Linear(32 * 7 * 7, 512)),
             nn.ReLU()
 		)
