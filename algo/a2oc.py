@@ -2,18 +2,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from model import CNNBase, OptionCritic
+from model import OptionCritic
 
 import numpy as np
-
-
-class View(nn.Module):
-	def __init__(self, shape):
-		super(View, self).__init__()
-		self.shape = shape
-
-	def forward(self, x):
-		return x.view((-1, ) + self.shape)
 
 
 class A2OC(object):
@@ -28,22 +19,7 @@ class A2OC(object):
 
 		self.envs = envs
 
-		obs_shape = envs.observation_space.shape
-		obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
-
-		self.base = CNNBase(obs_shape[0], False)
-		self.options_action_head = nn.Sequential(nn.Linear(self.base.output_size, self.num_actions * self.num_options),
-		                                         View((self.num_options, self.num_actions)),
-		                                         nn.Softmax(2))
-		self.options_termination_head = nn.Sequential(nn.Linear(self.base.output_size, self.num_options),
-		                                              nn.Sigmoid())
-		self.options_value_head = nn.Linear(self.base.output_size, self.num_options)
-
-		self.actor_critic = OptionCritic(self.base,
-		                                 self.options_action_head,
-		                                 self.options_value_head,
-		                                 self.options_termination_head,
-		                                 args)
+		self.actor_critic = OptionCritic(envs, args)
 
 		if args.cuda:
 			self.actor_critic.cuda()
@@ -52,13 +28,13 @@ class A2OC(object):
 		self.entropy_coef = args.entropy_coef
 		self.termination_loss_coef = args.termination_loss_coef
 		self.max_grad_norm = args.max_grad_norm
-
 		self.state_size = self.actor_critic.state_size
 
 		self.optimizer = optim.RMSprop(self.actor_critic.parameters(), args.lr, eps=args.eps,
 		                               alpha=args.alpha)
 
 	def act(self, inputs, states, masks, deterministic=False):
+
 		value, action, action_log_prob, states = self.actor_critic.act(inputs, states, masks, deterministic=deterministic)
 
 		cpu_actions = action.squeeze(1).cpu().numpy()
@@ -66,7 +42,7 @@ class A2OC(object):
 		# Observe reward and next obs
 		obs, reward, done, info = self.envs.step(cpu_actions)
 
-		reward = np.add(reward, self.actor_critic.terminations * self.actor_critic.delib)
+		reward = np.add(reward, - self.actor_critic.terminations * self.actor_critic.delib)
 		reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
 
 		if self.args.cuda:
@@ -82,7 +58,7 @@ class A2OC(object):
 		action_shape = rollouts.actions.size()[-1]
 		num_steps, num_processes, _ = rollouts.rewards.size()
 
-		values, action_log_probs, dist_entropy, options_value = self.actor_critic.evaluate_actions(
+		values, action_log_probs, dist_entropy, options_value, terminations = self.actor_critic.evaluate_actions(
 				rollouts.observations[:-1].view(-1, *obs_shape),
 				rollouts.states[0].view(-1, self.actor_critic.state_size),
 				rollouts.masks[:-1].view(-1, 1),
@@ -95,9 +71,9 @@ class A2OC(object):
 
 		V = options_value.max(1)[0] * (1 - self.actor_critic.options_epsilon) + (self.actor_critic.options_epsilon * options_value.mean(1)[0])
 
-		termination_loss = (values.squeeze() - V + self.actor_critic.delib)
+		termination_loss_grad = (values.squeeze() - V + self.actor_critic.delib).detach()
 
-		termination_loss = (termination_loss.detach() * self.actor_critic.terminations_history).mean()  # n_steps x n_processes x 1
+		termination_loss = (termination_loss_grad * terminations).mean()  # n_steps x n_processes x 1
 		self.optimizer.zero_grad()
 		cost = self.args.num_steps * (value_loss * self.value_loss_coef + action_loss -
 		 dist_entropy * self.entropy_coef + termination_loss * self.termination_loss_coef)
@@ -107,8 +83,7 @@ class A2OC(object):
 
 		self.optimizer.step()
 
-		self.actor_critic.options_history = torch.tensor([]).long()
-		self.actor_critic.terminations_history = torch.tensor([])
+		self.actor_critic.reset_trackers()
 
 		return value_loss.item(), action_loss.item(), termination_loss.item(), dist_entropy.item()
 

@@ -111,6 +111,10 @@ def main():
 		current_obs = current_obs.cuda()
 		rollouts.cuda()
 
+	title_name = args.env_name + " | " + args.algo
+	if args.algo == "a2oc":
+		title_name += " | "+ str(args.num_options) + " | " + str(args.delib)
+
 	start = time.time()
 	for j in range(num_updates):
 		for step in range(args.num_steps):
@@ -183,7 +187,7 @@ def main():
 		if args.vis and j % args.vis_interval == 0:
 			try:
 				# Sometimes monitor doesn't properly flush the outputs
-				win = visdom_plot(viz, win, log_dir, args.env_name,
+				win = visdom_plot(viz, win, log_dir, title_name,
 				                  args.algo, args.num_frames)
 			except IOError:
 				pass

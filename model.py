@@ -4,43 +4,56 @@ import torch.nn as nn
 from distributions import Categorical, DiagGaussian
 from utils import init, init_normc_, Flatten
 
+
+class View(nn.Module):
+	def __init__(self, shape):
+		super(View, self).__init__()
+		self.shape = shape
+
+	def forward(self, x):
+		return x.view((-1, ) + self.shape)
+
+
 class OptionCritic(nn.Module):
-	def __init__(self, base_net, action_head, value_head, termination_head, args):
+	def __init__(self, envs, args):
 		super(OptionCritic, self).__init__()
 
 		torch.set_default_tensor_type(torch.cuda.FloatTensor if args.cuda else torch.FloatTensor)
 
-		self.base_net = base_net
-		self.action_head = action_head
-		self.value_head = value_head
-		self.termination_head = termination_head
 
-		self.state_size = self.base_net.state_size
-
-		self.value_loss_coef = args.value_loss_coef
-		self.entropy_coef = args.entropy_coef
-		self.termination_loss_coef = args.termination_loss_coef
-		self.max_grad_norm = args.max_grad_norm
-		self.lr = args.lr
-		self.alpha = args.alpha
-		self.delib = args.delib
-		self.options_epsilon = torch.tensor([args.options_epsilon])
+		obs_shape = envs.observation_space.shape
+		obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
 		self.num_threads = args.num_processes
 		self.num_options = args.num_options
 		self.num_steps = args.num_steps
+		self.num_actions = envs.action_space.n
 
-		self.current_options = torch.ones(self.num_threads).random_(0, self.num_options).long().unsqueeze(dim=1)
-		self.options_history = torch.ones(0).long()
+		self.base_net = CNNBase(obs_shape[0], False)
+		self.action_head = nn.Sequential(nn.Linear(self.base_net.output_size, self.num_actions * self.num_options),
+		                                         View((self.num_options, self.num_actions)),
+		                                         nn.Softmax(2))
+		self.termination_head = nn.Sequential(nn.Linear(self.base_net.output_size, self.num_options),
+		                                              nn.Sigmoid())
+		self.value_head = nn.Linear(self.base_net.output_size, self.num_options)
+
+		self.delib = args.delib
+		self.options_epsilon = torch.tensor([args.options_epsilon])
+		self.state_size = self.base_net.state_size
+
+		self.current_options = torch.zeros(self.num_threads).random_(0, self.num_options).long().unsqueeze(dim=1)
+		self.options_history = torch.zeros(self.num_threads * self.num_steps).long()
 
 		self.terminations = torch.zeros(self.num_threads)
-		self.terminations_history = torch.zeros(0)
+
+		self.current_step = 0
 
 	def act(self, inputs, states, masks, deterministic=False):
 		actor_features = self.base_net.main(inputs)
 
 		self.terminations = self.termination_head(actor_features).gather(1,
 		                                                                 self.current_options).squeeze()  # dimension: num_threads x 1
+
 		rand_num = torch.rand(1)
 		self.terminations = torch.where(self.terminations > rand_num,
 		                                torch.ones(self.num_threads),
@@ -62,6 +75,8 @@ class OptionCritic(nn.Module):
 
 		value = self.get_value(inputs)  # dimension: num_threads x 1
 
+		self.current_step += 1
+
 		return value, action, action_log_prob, states
 
 	def select_new_option(self, actor_features):
@@ -76,11 +91,10 @@ class OptionCritic(nn.Module):
 		                          random_options)
 
 		self.current_options = self.current_options.squeeze()
+		self.options_history[self.num_threads * self.current_step : self.num_threads * (self.current_step + 1)] = self.current_options.clone()
 		self.current_options[self.terminations == 1] = new_options
 
 		self.current_options = self.current_options.unsqueeze(-1)
-		self.options_history = torch.cat((self.options_history, self.current_options), dim=0)
-		self.terminations_history = torch.cat((self.terminations_history, self.terminations), dim=0)
 
 	def get_value(self, inputs):
 		actor_features = self.base_net.main(inputs)
@@ -93,6 +107,13 @@ class OptionCritic(nn.Module):
 		indices = indices.squeeze()
 		value = value[count, indices].unsqueeze(-1)
 		return value  # dimension: num_threads x 1 or (num_steps * num_threads) x 1
+
+	def get_terminations_history(self, actor_features):
+		terminations = self.termination_head(actor_features)
+		indices = self.options_history
+		count = torch.arange(terminations.shape[0]).long()
+		indices = indices.squeeze()
+		return terminations[count, indices].unsqueeze(-1)
 
 	def evaluate_actions(self, inputs, states, masks, action):
 		value = self.get_value(inputs)
@@ -109,13 +130,18 @@ class OptionCritic(nn.Module):
 
 		dist_entropy = dist.entropy().mean()
 
-		# The expectancy of the value given state and policy over options
 		options_value = self.get_options_value(actor_features)  # dimension: (num_threads * num_steps) x num_options
 
-		return value, action_log_prob, dist_entropy, options_value
+		terminations = self.get_terminations_history(actor_features)
+
+		return value, action_log_prob, dist_entropy, options_value, terminations
 
 	def get_options_value(self, actor_features):
 		return self.value_head(actor_features)
+
+	def reset_trackers(self):
+		self.current_step = 0
+		self.options_history[:] = 0
 
 	def act_enjoy(self, inputs, states, masks, deterministic=False):
 		num_threads = 1
@@ -127,20 +153,13 @@ class OptionCritic(nn.Module):
 		self.terminations = self.termination_head(actor_features)[count, self.current_options].squeeze()  # dimension: num_threads x 1
 		rand_num = torch.rand(1)
 
-		print (self.terminations, rand_num)
-
 		if self.terminations > rand_num:
 			values = self.value_head(actor_features)  # dimension: num_threads x num_options
-			# print(values)
 			new_options = torch.argmax(values, 1)
 			random_options = torch.ones(num_threads).random_(0, self.num_options).long().squeeze()
 			random_numbers = torch.rand(num_threads)
-			old_options = self.current_options.clone()
 			self.current_options = torch.where(random_numbers > self.options_epsilon.expand_as(random_numbers),
 			                                   new_options, random_options)
-
-			if old_options != self.current_options:
-				print(old_options, "->", self.current_options)
 
 		action_prob = self.action_head(actor_features).squeeze()[self.current_options]  # dimension: num_threads x num_options x num_actions
 		dist = torch.distributions.Categorical(action_prob)
@@ -193,7 +212,7 @@ class Policy(nn.Module):
 		return value, action, action_log_probs, states
 
 	def act_enjoy(self, inputs, states, masks, deterministic=False):
-		_, action, _, _ = self.act(inputs, states, masks, deterministic=deterministic)
+		_, action, _, _, _ = self.act(inputs, states, masks, deterministic=deterministic)
 
 		return action
 
@@ -220,14 +239,12 @@ class CNNBase(nn.Module):
 		                       lambda x: nn.init.constant_(x, 0))
 
 		self.main = nn.Sequential(
-			init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
+			init_(nn.Conv2d(num_inputs, 16, 8, stride=4)),
 			nn.ReLU(),
-			init_(nn.Conv2d(32, 64, 4, stride=2)),
-			nn.ReLU(),
-			init_(nn.Conv2d(64, 32, 3, stride=1)),
+			init_(nn.Conv2d(16, 32, 4, stride=2)),
 			nn.ReLU(),
 			Flatten(),
-            init_(nn.Linear(32 * 7 * 7, 512)),
+            init_(nn.Linear(32 * 9 * 9, 256)),
             nn.ReLU()
 		)
 
@@ -238,7 +255,7 @@ class CNNBase(nn.Module):
 			self.gru.bias_ih.data.fill_(0)
 			self.gru.bias_hh.data.fill_(0)
 
-		self.critic_linear = init_(nn.Linear(512, 1))
+		self.critic_linear = init_(nn.Linear(256, 1))
 
 		self.train()
 
@@ -251,7 +268,7 @@ class CNNBase(nn.Module):
 
 	@property
 	def output_size(self):
-		return 512
+		return 256
 
 	def forward(self, inputs, states, masks):
 		x = self.main(inputs / 255.0)

@@ -1,6 +1,7 @@
 import argparse
 import os
 import types
+from time import sleep
 
 import numpy as np
 import torch
@@ -16,6 +17,8 @@ parser.add_argument('--seed', type=int, default=1,
                     help='random seed (default: 1)')
 parser.add_argument('--num-stack', type=int, default=4,
                     help='number of frames to stack (default: 4)')
+parser.add_argument('--fps', type=int, default=0,
+                    help='number of frames per second (default: 0 which means unlimited)')
 parser.add_argument('--log-interval', type=int, default=10,
                     help='log interval, one log per n updates (default: 10)')
 parser.add_argument('--env-name', default='PongNoFrameskip-v4',
@@ -77,10 +80,11 @@ if args.env_name.find('Bullet') > -1:
             torsoId = i
 
 while True:
+    if args.fps > 0:
+        sleep(1. / args.fps)
     with torch.no_grad():
         action = actor_critic.act_enjoy(current_obs, states, masks)
     cpu_actions = action.squeeze(1).cpu().numpy()
-    print(cpu_actions)
     # Observe reward and next obs
     obs, reward, done, _ = env.step(cpu_actions)
 
