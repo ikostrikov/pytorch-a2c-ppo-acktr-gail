@@ -3,7 +3,6 @@
 # Thanks to the author and OpenAI team!
 
 import glob
-import json
 import os
 
 import matplotlib
@@ -70,6 +69,7 @@ def load_data(indir, smooth, bin_size):
     timesteps = 0
     for i in range(len(datas)):
         result.append([timesteps, datas[i][-1]])
+        # result.append([timesteps, datas[i][1]])  # take the number of steps, not the reward
         timesteps += datas[i][1]
 
     if len(result) < bin_size:

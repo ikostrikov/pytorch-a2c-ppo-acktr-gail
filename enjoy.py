@@ -1,6 +1,7 @@
 import argparse
 import os
 import types
+from time import sleep
 
 import numpy as np
 import torch
@@ -9,12 +10,15 @@ from baselines.common.vec_env.vec_normalize import VecNormalize
 
 from envs import make_env
 
-
 parser = argparse.ArgumentParser(description='RL')
+parser.add_argument('--algo', default='a2oc',
+                    help='algorithm to use: a2c | a2oc | ppo | acktr (default: a2oc)')
 parser.add_argument('--seed', type=int, default=1,
                     help='random seed (default: 1)')
 parser.add_argument('--num-stack', type=int, default=4,
                     help='number of frames to stack (default: 4)')
+parser.add_argument('--fps', type=int, default=0,
+                    help='number of frames per second (default: 0 which means unlimited)')
 parser.add_argument('--log-interval', type=int, default=10,
                     help='log interval, one log per n updates (default: 10)')
 parser.add_argument('--env-name', default='PongNoFrameskip-v4',
@@ -29,8 +33,7 @@ args = parser.parse_args()
 env = make_env(args.env_name, args.seed, 0, None, args.add_timestep)
 env = DummyVecEnv([env])
 
-actor_critic, ob_rms = \
-            torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
+actor_critic, ob_rms = torch.load(os.path.join(args.load_dir, args.algo, args.env_name + ".pt"), map_location='cpu')
 
 
 if len(env.observation_space.shape) == 1:
@@ -58,7 +61,7 @@ masks = torch.zeros(1, 1)
 
 def update_current_obs(obs):
     shape_dim0 = env.observation_space.shape[0]
-    obs = torch.from_numpy(obs).float()
+    obs = torch.from_numpy(obs[0]).float()
     if args.num_stack > 1:
         current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
     current_obs[:, -shape_dim0:] = obs
@@ -77,13 +80,12 @@ if args.env_name.find('Bullet') > -1:
             torsoId = i
 
 while True:
+    if args.fps > 0:
+        sleep(1. / args.fps)
     with torch.no_grad():
-        value, action, _, states = actor_critic.act(current_obs,
-                                                    states,
-                                                    masks,
-                                                    deterministic=True)
+        action = actor_critic.act_enjoy(current_obs, states, masks)
     cpu_actions = action.squeeze(1).cpu().numpy()
-    # Obser reward and next obs
+    # Observe reward and next obs
     obs, reward, done, _ = env.step(cpu_actions)
 
     masks.fill_(0.0 if done else 1.0)
