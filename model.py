@@ -118,13 +118,26 @@ class CNNBase(nn.Module):
             if inputs.size(0) == states.size(0):
                 x = states = self.gru(x, states * masks)
             else:
-                x = x.view(-1, states.size(0), x.size(1))
-                masks = masks.view(-1, states.size(0), 1)
+                # x is a (T, N, -1) tensor that has been flatten to (T * N, -1)
+                N = states.size(0)
+                T = int(x.size(0) / N)
+
+                # unflatten
+                x = x.view(T, N, x.size(1))
+
+                # Same deal with masks
+                masks = masks.view(T, N, 1)
+
                 outputs = []
-                for i in range(x.size(0)):
+                for i in range(T):
                     hx = states = self.gru(x[i], states * masks[i])
                     outputs.append(hx)
-                x = torch.cat(outputs, 0)
+
+                # assert len(outputs) == T
+                # x is a (T, N, -1) tensor
+                x = torch.stack(outputs, dim=0)
+                # flatten
+                x = x.view(T * N, -1)
 
         return self.critic_linear(x), x, states
 
