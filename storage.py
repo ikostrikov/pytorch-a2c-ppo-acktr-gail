@@ -126,7 +126,7 @@ class RolloutStorage(object):
             # States is just a (N, -1) tensor
             states_batch = torch.stack(states_batch, 1).view(N, -1)
 
-            # Flatten the (T, N, -1) tensors to (T * N, -1)
+            # Flatten the (T, N, ...) tensors to (T * N, ...)
             observations_batch = _flatten_helper(T, N, observations_batch)
             actions_batch = _flatten_helper(T, N, actions_batch)
             return_batch = _flatten_helper(T, N, return_batch)
