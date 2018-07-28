@@ -1,6 +1,9 @@
 import torch
 from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 
+def _flatten_helper(T, N, _tensor):
+    return _tensor.view(T * N, *_tensor.size()[2:])
+
 
 class RolloutStorage(object):
     def __init__(self, num_steps, num_processes, obs_shape, action_space, state_size):
@@ -111,13 +114,26 @@ class RolloutStorage(object):
                 old_action_log_probs_batch.append(self.action_log_probs[:, ind])
                 adv_targ.append(advantages[:, ind])
 
-            observations_batch = torch.cat(observations_batch, 0)
-            states_batch = torch.cat(states_batch, 0)
-            actions_batch = torch.cat(actions_batch, 0)
-            return_batch = torch.cat(return_batch, 0)
-            masks_batch = torch.cat(masks_batch, 0)
-            old_action_log_probs_batch = torch.cat(old_action_log_probs_batch, 0)
-            adv_targ = torch.cat(adv_targ, 0)
+            T, N = self.num_steps, num_envs_per_batch
+            # These are all tensors of size (T, N, -1)
+            observations_batch = torch.stack(observations_batch, 1)
+            actions_batch = torch.stack(actions_batch, 1)
+            return_batch = torch.stack(return_batch, 1)
+            masks_batch = torch.stack(masks_batch, 1)
+            old_action_log_probs_batch = torch.stack(old_action_log_probs_batch, 1)
+            adv_targ = torch.stack(adv_targ, 1)
+
+            # States is just a (N, -1) tensor
+            states_batch = torch.stack(states_batch, 1).view(N, -1)
+
+            # Flatten the (T, N, ...) tensors to (T * N, ...)
+            observations_batch = _flatten_helper(T, N, observations_batch)
+            actions_batch = _flatten_helper(T, N, actions_batch)
+            return_batch = _flatten_helper(T, N, return_batch)
+            masks_batch = _flatten_helper(T, N, masks_batch)
+            old_action_log_probs_batch = _flatten_helper(T, N, \
+                    old_action_log_probs_batch)
+            adv_targ = _flatten_helper(T, N, adv_targ)
 
             yield observations_batch, states_batch, actions_batch, \
                 return_batch, masks_batch, old_action_log_probs_batch, adv_targ
