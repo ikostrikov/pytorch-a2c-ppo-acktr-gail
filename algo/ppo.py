@@ -48,13 +48,13 @@ class PPO(object):
                     advantages, self.num_mini_batch)
 
             for sample in data_generator:
-                observations_batch, states_batch, actions_batch, \
+                obs_batch, recurrent_hidden_states_batch, actions_batch, \
                    return_batch, masks_batch, old_action_log_probs_batch, \
                         adv_targ = sample
 
                 # Reshape to do in a single forward pass for all steps
                 values, action_log_probs, dist_entropy, states = self.actor_critic.evaluate_actions(
-                    observations_batch, states_batch,
+                    obs_batch, recurrent_hidden_states_batch,
                     masks_batch, actions_batch)
 
                 ratio = torch.exp(action_log_probs - old_action_log_probs_batch)

@@ -29,13 +29,16 @@ class Policy(nn.Module):
         else:
             raise NotImplementedError
 
-        self.state_size = self.base.state_size
+    @property
+    def recurrent_hidden_state_size(self):
+        """Size of rnn_hx."""
+        return self.base.recurrent_hidden_state_size
 
-    def forward(self, inputs, states, masks):
+    def forward(self, inputs, rnn_hxs, masks):
         raise NotImplementedError
 
-    def act(self, inputs, states, masks, deterministic=False):
-        value, actor_features, states = self.base(inputs, states, masks)
+    def act(self, inputs, rnn_hxs, masks, deterministic=False):
+        value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
         dist = self.dist(actor_features)
 
         if deterministic:
@@ -46,20 +49,20 @@ class Policy(nn.Module):
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
 
-        return value, action, action_log_probs, states
+        return value, action, action_log_probs, rnn_hxs
 
-    def get_value(self, inputs, states, masks):
-        value, _, _ = self.base(inputs, states, masks)
+    def get_value(self, inputs, rnn_hxs, masks):
+        value, _, _ = self.base(inputs, rnn_hxs, masks)
         return value
 
-    def evaluate_actions(self, inputs, states, masks, action):
-        value, actor_features, states = self.base(inputs, states, masks)
+    def evaluate_actions(self, inputs, rnn_hxs, masks, action):
+        value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
         dist = self.dist(actor_features)
 
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
 
-        return value, action_log_probs, dist_entropy, states
+        return value, action_log_probs, dist_entropy, rnn_hxs
 
 
 class NNBase(nn.Module):
@@ -77,7 +80,7 @@ class NNBase(nn.Module):
             self.gru.bias_hh.data.fill_(0)
 
     @property
-    def state_size(self):
+    def recurrent_hidden_state_size(self):
         if hasattr(self, 'gru'):
             return self._hidden_size
         else:
@@ -87,12 +90,12 @@ class NNBase(nn.Module):
     def output_size(self):
         return self._hidden_size
 
-    def _forward_gru(self, x, states, masks):
-        if x.size(0) == states.size(0):
-            x = states = self.gru(x, states * masks)
+    def _forward_gru(self, x, hxs, masks):
+        if x.size(0) == hxs.size(0):
+            x = hxs = self.gru(x, hxs * masks)
         else:
             # x is a (T, N, -1) tensor that has been flatten to (T * N, -1)
-            N = states.size(0)
+            N = hxs.size(0)
             T = int(x.size(0) / N)
 
             # unflatten
@@ -103,7 +106,7 @@ class NNBase(nn.Module):
 
             outputs = []
             for i in range(T):
-                hx = states = self.gru(x[i], states * masks[i])
+                hx = hxs = self.gru(x[i], hxs * masks[i])
                 outputs.append(hx)
 
             # assert len(outputs) == T
@@ -112,7 +115,7 @@ class NNBase(nn.Module):
             # flatten
             x = x.view(T * N, -1)
 
-        return x, states
+        return x, hxs
 
 
 class CNNBase(NNBase):
@@ -144,13 +147,13 @@ class CNNBase(NNBase):
 
         self.train()
 
-    def forward(self, inputs, states, masks):
+    def forward(self, inputs, rnn_hxs, masks):
         x = self.main(inputs / 255.0)
 
         if hasattr(self, 'gru'):
-            x, states = self._forward_gru(x, states, masks)
+            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
 
-        return self.critic_linear(x), x, states
+        return self.critic_linear(x), x, rnn_hxs
 
 
 class MLPBase(NNBase):
@@ -182,13 +185,13 @@ class MLPBase(NNBase):
 
         self.train()
 
-    def forward(self, inputs, states, masks):
+    def forward(self, inputs, rnn_hxs, masks):
         x = inputs
 
         if hasattr(self, 'gru'):
-            x, states = self._forward_gru(x, states, masks)
+            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
 
         hidden_critic = self.critic(x)
         hidden_actor = self.actor(x)
 
-        return self.critic_linear(hidden_critic), hidden_actor, states
+        return self.critic_linear(hidden_critic), hidden_actor, rnn_hxs

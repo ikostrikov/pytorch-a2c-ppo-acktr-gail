@@ -94,13 +94,13 @@ def main():
         agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
                                args.entropy_coef, acktr=True)
 
-    rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
+    rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape,
+        envs.action_space, actor_critic.recurrent_hidden_state_size)
     current_obs = torch.zeros(args.num_processes, *obs_shape)
 
     obs = envs.reset()
     update_current_obs(obs, current_obs, obs_shape, args.num_stack)
-
-    rollouts.observations[0].copy_(current_obs)
+    rollouts.obs[0].copy_(current_obs)
 
     # These variables are used to compute average rewards for all processes.
     episode_rewards = torch.zeros([args.num_processes, 1])
@@ -115,10 +115,11 @@ def main():
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
-                value, action, action_log_prob, states = actor_critic.act(
-                        rollouts.observations[step],
-                        rollouts.states[step],
+                value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
+                        rollouts.obs[step],
+                        rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
+
             cpu_actions = action.squeeze(1).cpu().numpy()
 
             # Obser reward and next obs
@@ -141,11 +142,11 @@ def main():
                 current_obs *= masks
 
             update_current_obs(obs, current_obs, obs_shape, args.num_stack)
-            rollouts.insert(current_obs, states, action, action_log_prob, value, reward, masks)
+            rollouts.insert(current_obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks)
 
         with torch.no_grad():
-            next_value = actor_critic.get_value(rollouts.observations[-1],
-                                                rollouts.states[-1],
+            next_value = actor_critic.get_value(rollouts.obs[-1],
+                                                rollouts.recurrent_hidden_states[-1],
                                                 rollouts.masks[-1]).detach()
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
