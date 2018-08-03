@@ -8,6 +8,7 @@ from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
 
 from envs import make_env
+from utils import update_current_obs
 
 
 parser = argparse.ArgumentParser(description='RL')
@@ -55,18 +56,9 @@ current_obs = torch.zeros(1, *obs_shape)
 states = torch.zeros(1, actor_critic.state_size)
 masks = torch.zeros(1, 1)
 
-
-def update_current_obs(obs):
-    shape_dim0 = env.observation_space.shape[0]
-    obs = torch.from_numpy(obs).float()
-    if args.num_stack > 1:
-        current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
-    current_obs[:, -shape_dim0:] = obs
-
-
 render_func('human')
 obs = env.reset()
-update_current_obs(obs)
+update_current_obs(obs, current_obs, obs_shape, args.num_stack)
 
 if args.env_name.find('Bullet') > -1:
     import pybullet as p
@@ -92,7 +84,7 @@ while True:
         current_obs *= masks.unsqueeze(2).unsqueeze(2)
     else:
         current_obs *= masks
-    update_current_obs(obs)
+    update_current_obs(obs, current_obs, obs_shape, args.num_stack)
 
     if args.env_name.find('Bullet') > -1:
         if torsoId > -1:

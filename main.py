@@ -17,9 +17,11 @@ from baselines.common.vec_env.vec_normalize import VecNormalize
 from envs import make_env
 from model import Policy
 from storage import RolloutStorage
+from utils import update_current_obs
 from visualize import visdom_plot
 
 import algo
+
 
 args = get_args()
 
@@ -95,15 +97,8 @@ def main():
     rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
     current_obs = torch.zeros(args.num_processes, *obs_shape)
 
-    def update_current_obs(obs):
-        shape_dim0 = envs.observation_space.shape[0]
-        obs = torch.from_numpy(obs).float()
-        if args.num_stack > 1:
-            current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
-        current_obs[:, -shape_dim0:] = obs
-
     obs = envs.reset()
-    update_current_obs(obs)
+    update_current_obs(obs, current_obs, obs_shape, args.num_stack)
 
     rollouts.observations[0].copy_(current_obs)
 
@@ -145,7 +140,7 @@ def main():
             else:
                 current_obs *= masks
 
-            update_current_obs(obs)
+            update_current_obs(obs, current_obs, obs_shape, args.num_stack)
             rollouts.insert(current_obs, states, action, action_log_prob, value, reward, masks)
 
         with torch.no_grad():
