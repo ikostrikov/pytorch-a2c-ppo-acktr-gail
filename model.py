@@ -11,12 +11,15 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, recurrent):
+    def __init__(self, obs_shape, action_space, base_kwargs=None):
         super(Policy, self).__init__()
+        if base_kwargs is None:
+            base_kwargs = {}
+
         if len(obs_shape) == 3:
-            self.base = CNNBase(obs_shape[0], recurrent)
+            self.base = CNNBase(obs_shape[0], **base_kwargs)
         elif len(obs_shape) == 1:
-            self.base = MLPBase(obs_shape[0], recurrent)
+            self.base = MLPBase(obs_shape[0], **base_kwargs)
         else:
             raise NotImplementedError
 
@@ -119,7 +122,7 @@ class NNBase(nn.Module):
 
 
 class CNNBase(NNBase):
-    def __init__(self, num_inputs, recurrent, hidden_size=512):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512):
         super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
 
         init_ = lambda m: init(m,
@@ -157,7 +160,7 @@ class CNNBase(NNBase):
 
 
 class MLPBase(NNBase):
-    def __init__(self, num_inputs, recurrent, hidden_size=64):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=64):
         super(MLPBase, self).__init__(recurrent, num_inputs, hidden_size)
 
         if recurrent:
