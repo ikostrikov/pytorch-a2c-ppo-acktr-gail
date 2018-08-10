@@ -33,6 +33,10 @@ class Policy(nn.Module):
             raise NotImplementedError
 
     @property
+    def is_recurrent(self):
+        return self.base.is_recurrent
+
+    @property
     def recurrent_hidden_state_size(self):
         """Size of rnn_hx."""
         return self.base.recurrent_hidden_state_size
@@ -70,24 +74,28 @@ class Policy(nn.Module):
 
 class NNBase(nn.Module):
 
-    def __init__(self, recurrent, gru_input_size, hidden_size):
+    def __init__(self, recurrent, recurrent_input_size, hidden_size):
         super(NNBase, self).__init__()
 
         self._hidden_size = hidden_size
+        self._recurrent = recurrent
 
         if recurrent:
-            self.gru = nn.GRUCell(gru_input_size, hidden_size)
+            self.gru = nn.GRUCell(recurrent_input_size, hidden_size)
             nn.init.orthogonal_(self.gru.weight_ih.data)
             nn.init.orthogonal_(self.gru.weight_hh.data)
             self.gru.bias_ih.data.fill_(0)
             self.gru.bias_hh.data.fill_(0)
 
     @property
+    def is_recurrent(self):
+        return self._recurrent
+
+    @property
     def recurrent_hidden_state_size(self):
-        if hasattr(self, 'gru'):
+        if self._recurrent:
             return self._hidden_size
-        else:
-            return 1
+        return 1
 
     @property
     def output_size(self):
@@ -153,7 +161,7 @@ class CNNBase(NNBase):
     def forward(self, inputs, rnn_hxs, masks):
         x = self.main(inputs / 255.0)
 
-        if hasattr(self, 'gru'):
+        if self.is_recurrent:
             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
 
         return self.critic_linear(x), x, rnn_hxs
@@ -191,7 +199,7 @@ class MLPBase(NNBase):
     def forward(self, inputs, rnn_hxs, masks):
         x = inputs
 
-        if hasattr(self, 'gru'):
+        if self.is_recurrent:
             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
 
         hidden_critic = self.critic(x)
