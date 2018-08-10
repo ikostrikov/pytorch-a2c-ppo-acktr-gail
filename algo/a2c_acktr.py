@@ -5,7 +5,7 @@ import torch.optim as optim
 from .kfac import KFACOptimizer
 
 
-class A2C_ACKTR(object):
+class A2C_ACKTR():
     def __init__(self,
                  actor_critic,
                  value_loss_coef,
