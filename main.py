@@ -50,6 +50,7 @@ def main():
     print("#######")
 
     torch.set_num_threads(1)
+    device = torch.device("cuda:0" if args.cuda else "cpu")
 
     if args.vis:
         from visdom import Visdom
@@ -72,14 +73,12 @@ def main():
 
     actor_critic = Policy(obs_shape, envs.action_space,
         base_kwargs={'recurrent': args.recurrent_policy})
+    actor_critic.to(device)
 
     if envs.action_space.__class__.__name__ == "Discrete":
         action_shape = 1
     else:
         action_shape = envs.action_space.shape[0]
-
-    if args.cuda:
-        actor_critic.cuda()
 
     if args.algo == 'a2c':
         agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
@@ -107,9 +106,8 @@ def main():
     episode_rewards = torch.zeros([args.num_processes, 1])
     final_rewards = torch.zeros([args.num_processes, 1])
 
-    if args.cuda:
-        current_obs = current_obs.cuda()
-        rollouts.cuda()
+    current_obs = current_obs.to(device)
+    rollouts.to(device)
 
     start = time.time()
     for j in range(num_updates):
@@ -134,8 +132,7 @@ def main():
             final_rewards += (1 - masks) * episode_rewards
             episode_rewards *= masks
 
-            if args.cuda:
-                masks = masks.cuda()
+            masks = masks.to(device)
 
             if current_obs.dim() == 4:
                 current_obs *= masks.unsqueeze(2).unsqueeze(2)

@@ -25,15 +25,15 @@ class RolloutStorage(object):
         self.num_steps = num_steps
         self.step = 0
 
-    def cuda(self):
-        self.obs = self.obs.cuda()
-        self.recurrent_hidden_states = self.recurrent_hidden_states.cuda()
-        self.rewards = self.rewards.cuda()
-        self.value_preds = self.value_preds.cuda()
-        self.returns = self.returns.cuda()
-        self.action_log_probs = self.action_log_probs.cuda()
-        self.actions = self.actions.cuda()
-        self.masks = self.masks.cuda()
+    def to(self, device):
+        self.obs = self.obs.to(device)
+        self.recurrent_hidden_states = self.recurrent_hidden_states.to(device)
+        self.rewards = self.rewards.to(device)
+        self.value_preds = self.value_preds.to(device)
+        self.returns = self.returns.to(device)
+        self.action_log_probs = self.action_log_probs.to(device)
+        self.actions = self.actions.to(device)
+        self.masks = self.masks.to(device)
 
     def insert(self, obs, recurrent_hidden_states, actions, action_log_probs, value_preds, rewards, masks):
         self.obs[self.step + 1].copy_(obs)
