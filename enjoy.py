@@ -53,7 +53,7 @@ else:
 obs_shape = env.observation_space.shape
 obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 current_obs = torch.zeros(1, *obs_shape)
-states = torch.zeros(1, actor_critic.state_size)
+recurrent_hidden_states = torch.zeros(1, actor_critic.recurrent_hidden_state_size)
 masks = torch.zeros(1, 1)
 
 render_func('human')
@@ -70,10 +70,8 @@ if args.env_name.find('Bullet') > -1:
 
 while True:
     with torch.no_grad():
-        value, action, _, states = actor_critic.act(current_obs,
-                                                    states,
-                                                    masks,
-                                                    deterministic=True)
+        value, action, _, recurrent_hidden_states = actor_critic.act(
+            current_obs, recurrent_hidden_states, masks, deterministic=True)
     cpu_actions = action.squeeze(1).cpu().numpy()
     # Obser reward and next obs
     obs, reward, done, _ = env.step(cpu_actions)
