@@ -1,5 +1,11 @@
 # pytorch-a2c-ppo-acktr
 
+## TODO (08/27/2018)
+
+- [ ] Add memory Reacher (provide target only for the first timestep, to test the recurrent policy)
+- [ ] Properly handle masking for continuing tasks, don't mask if ended because of max steps (see https://github.com/sfujim/TD3/blob/master/main.py#L123)
+
+
 ## Update 10/06/2017: added enjoy.py and a link to pretrained models!
 ## Update 09/27/2017: now supports both Atari and MuJoCo/Roboschool!
 
