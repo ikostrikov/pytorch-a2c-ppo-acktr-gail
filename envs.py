@@ -2,10 +2,12 @@ import os
 
 import gym
 import numpy as np
+import torch
 from gym.spaces.box import Box
 
 from baselines import bench
 from baselines.common.atari_wrappers import make_atari, wrap_deepmind
+from baselines.common.vec_env import VecEnvWrapper
 
 try:
     import dm_control2gym
@@ -50,7 +52,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep):
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
         obs_shape = env.observation_space.shape
         if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
-            env = WrapPyTorch(env)
+            env = TransposeImage(env)
 
         return env
 
@@ -70,9 +72,9 @@ class AddTimestep(gym.ObservationWrapper):
         return np.concatenate((observation, [self.env._elapsed_steps]))
 
 
-class WrapPyTorch(gym.ObservationWrapper):
+class TransposeImage(gym.ObservationWrapper):
     def __init__(self, env=None):
-        super(WrapPyTorch, self).__init__(env)
+        super(TransposeImage, self).__init__(env)
         obs_shape = self.observation_space.shape
         self.observation_space = Box(
             self.observation_space.low[0, 0, 0],
@@ -82,3 +84,24 @@ class WrapPyTorch(gym.ObservationWrapper):
 
     def observation(self, observation):
         return observation.transpose(2, 0, 1)
+
+
+class VecPyTorch(VecEnvWrapper):
+    def __init__(self, venv):
+        """Return only every `skip`-th frame"""
+        super(VecPyTorch, self).__init__(venv)
+
+    def reset(self):
+        obs = self.venv.reset()
+        obs = torch.from_numpy(obs)
+        return obs
+
+    def step_async(self, actions):
+        actions = actions.squeeze(1).cpu().numpy()
+        self.venv.step_async(actions)
+
+    def step_wait(self):
+        obs, reward, done, info = self.venv.step_wait()
+        obs = torch.from_numpy(obs)
+        reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
+        return obs, reward, done, info

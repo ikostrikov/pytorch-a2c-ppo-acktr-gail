@@ -4,12 +4,11 @@ import types
 
 import numpy as np
 import torch
+
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
-
-from envs import make_env
+from envs import VecPyTorch, make_env
 from utils import update_current_obs
-
 
 parser = argparse.ArgumentParser(description='RL')
 parser.add_argument('--seed', type=int, default=1,
@@ -50,6 +49,8 @@ if len(env.observation_space.shape) == 1:
 else:
     render_func = env.envs[0].render
 
+env = VecPyTorch(env)
+
 obs_shape = env.observation_space.shape
 obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 current_obs = torch.zeros(1, *obs_shape)
@@ -72,9 +73,9 @@ while True:
     with torch.no_grad():
         value, action, _, recurrent_hidden_states = actor_critic.act(
             current_obs, recurrent_hidden_states, masks, deterministic=True)
-    cpu_actions = action.squeeze(1).cpu().numpy()
+
     # Obser reward and next obs
-    obs, reward, done, _ = env.step(cpu_actions)
+    obs, reward, done, _ = env.step(action)
 
     masks.fill_(0.0 if done else 1.0)
 

@@ -10,18 +10,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+import algo
 from arguments import get_args
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
-from envs import make_env
+from envs import VecPyTorch, make_env
 from model import Policy
 from storage import RolloutStorage
 from utils import update_current_obs
 from visualize import visdom_plot
-
-import algo
-
 
 args = get_args()
 
@@ -67,6 +65,8 @@ def main():
 
     if len(envs.observation_space.shape) == 1:
         envs = VecNormalize(envs, gamma=args.gamma)
+
+    envs = VecPyTorch(envs)
 
     obs_shape = envs.observation_space.shape
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
@@ -119,11 +119,8 @@ def main():
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
 
-            cpu_actions = action.squeeze(1).cpu().numpy()
-
             # Obser reward and next obs
-            obs, reward, done, info = envs.step(cpu_actions)
-            reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
+            obs, reward, done, info = envs.step(action)
             episode_rewards += reward
 
             # If done then clean the history of observations.
