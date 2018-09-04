@@ -62,11 +62,6 @@ def main():
         base_kwargs={'recurrent': args.recurrent_policy})
     actor_critic.to(device)
 
-    if envs.action_space.__class__.__name__ == "Discrete":
-        action_shape = 1
-    else:
-        action_shape = envs.action_space.shape[0]
-
     if args.algo == 'a2c':
         agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
                                args.entropy_coef, lr=args.lr,
