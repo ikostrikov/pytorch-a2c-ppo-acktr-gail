@@ -8,6 +8,9 @@ from gym.spaces.box import Box
 from baselines import bench
 from baselines.common.atari_wrappers import make_atari, wrap_deepmind
 from baselines.common.vec_env import VecEnvWrapper
+from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
+from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+from baselines.common.vec_env.vec_normalize import VecNormalize
 
 try:
     import dm_control2gym
@@ -58,6 +61,24 @@ def make_env(env_id, seed, rank, log_dir, add_timestep):
 
     return _thunk
 
+def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep):
+    envs = [make_env(env_name, seed, i, log_dir, add_timestep)
+                for i in range(num_processes)]
+
+    if len(envs) > 1:
+        envs = SubprocVecEnv(envs)
+    else:
+        envs = DummyVecEnv(envs)
+
+    if len(envs.observation_space.shape) == 1:
+        if gamma is None:
+            envs = VecNormalize(envs, ret=False)
+        else:
+            envs = VecNormalize(envs, gamma=gamma)
+
+    envs = VecPyTorch(envs)
+
+    return envs
 
 class AddTimestep(gym.ObservationWrapper):
     def __init__(self, env=None):

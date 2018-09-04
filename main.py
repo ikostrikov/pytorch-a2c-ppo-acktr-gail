@@ -12,10 +12,7 @@ import torch.optim as optim
 
 import algo
 from arguments import get_args
-from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from baselines.common.vec_env.vec_normalize import VecNormalize
-from envs import VecPyTorch, make_env
+from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage
 from utils import update_current_obs
@@ -55,18 +52,8 @@ def main():
         viz = Visdom(port=args.port)
         win = None
 
-    envs = [make_env(args.env_name, args.seed, i, args.log_dir, args.add_timestep)
-                for i in range(args.num_processes)]
-
-    if args.num_processes > 1:
-        envs = SubprocVecEnv(envs)
-    else:
-        envs = DummyVecEnv(envs)
-
-    if len(envs.observation_space.shape) == 1:
-        envs = VecNormalize(envs, gamma=args.gamma)
-
-    envs = VecPyTorch(envs)
+    envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
+                        args.gamma, args.log_dir, args.add_timestep)
 
     obs_shape = envs.observation_space.shape
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
@@ -163,7 +150,7 @@ def main():
                 save_model = copy.deepcopy(actor_critic).cpu()
 
             save_model = [save_model,
-                            hasattr(envs, 'ob_rms') and envs.ob_rms or None]
+                            hasattr(envs.venv, 'ob_rms') and envs.venv.ob_rms or None]
 
             torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
 
