@@ -15,7 +15,6 @@ from arguments import get_args
 from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage
-from utils import update_current_obs
 from visualize import visdom_plot
 
 args = get_args()
@@ -53,10 +52,9 @@ def main():
         win = None
 
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
-                        args.gamma, args.log_dir, args.add_timestep)
+                        args.gamma, args.log_dir, args.add_timestep, device)
 
     obs_shape = envs.observation_space.shape
-    obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
     actor_critic = Policy(obs_shape, envs.action_space,
         base_kwargs={'recurrent': args.recurrent_policy})
@@ -78,17 +76,14 @@ def main():
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape,
         envs.action_space, actor_critic.recurrent_hidden_state_size)
-    current_obs = torch.zeros(args.num_processes, *obs_shape)
 
     obs = envs.reset()
-    update_current_obs(obs, current_obs, obs_shape, args.num_stack)
-    rollouts.obs[0].copy_(current_obs)
+    rollouts.obs[0].copy_(obs)
 
     # These variables are used to compute average rewards for all processes.
     episode_rewards = torch.zeros([args.num_processes, 1])
     final_rewards = torch.zeros([args.num_processes, 1])
 
-    current_obs = current_obs.to(device)
     rollouts.to(device)
 
     start = time.time()
@@ -111,15 +106,7 @@ def main():
             final_rewards += (1 - masks) * episode_rewards
             episode_rewards *= masks
 
-            masks = masks.to(device)
-
-            if current_obs.dim() == 4:
-                current_obs *= masks.unsqueeze(2).unsqueeze(2)
-            else:
-                current_obs *= masks
-
-            update_current_obs(obs, current_obs, obs_shape, args.num_stack)
-            rollouts.insert(current_obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks)
+            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks)
 
         with torch.no_grad():
             next_value = actor_critic.get_value(rollouts.obs[-1],
@@ -167,6 +154,7 @@ def main():
                                   args.algo, args.num_frames)
             except IOError:
                 pass
+
 
 if __name__ == "__main__":
     main()

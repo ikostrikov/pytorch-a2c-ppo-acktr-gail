@@ -108,13 +108,13 @@ I **highly** recommend to use --add-timestep argument with some mujoco environme
 #### A2C
 
 ```bash
-python main.py --env-name "Reacher-v2" --num-stack 1 --num-frames 1000000
+python main.py --env-name "Reacher-v2" --num-frames 1000000
 ```
 
 #### PPO
 
 ```bash
-python main.py --env-name "Reacher-v2" --algo ppo --use-gae --vis-interval 1  --log-interval 1 --num-stack 1 --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 1 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-frames 1000000
+python main.py --env-name "Reacher-v2" --algo ppo --use-gae --vis-interval 1  --log-interval 1 --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 1 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-frames 1000000
 ```
 
 #### ACKTR
@@ -132,13 +132,13 @@ Disclaimer: I might have used different hyper-parameters to train these models.
 ### Atari
 
 ```bash
-python enjoy.py --load-dir trained_models/a2c --env-name "PongNoFrameskip-v4" --num-stack 4
+python enjoy.py --load-dir trained_models/a2c --env-name "PongNoFrameskip-v4"
 ```
 
 ### MuJoCo
 
 ```bash
-python enjoy.py --load-dir trained_models/ppo --env-name "Reacher-v2" --num-stack 1
+python enjoy.py --load-dir trained_models/ppo --env-name "Reacher-v2"
 ```
 
 ## Results
