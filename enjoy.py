@@ -56,8 +56,6 @@ if isinstance(env.venv, VecNormalize):
 
     env.venv._obfilt = types.MethodType(_obfilt, env.venv)
 
-obs_shape = env.observation_space.shape
-current_obs = torch.zeros(1, *obs_shape)
 recurrent_hidden_states = torch.zeros(1, actor_critic.recurrent_hidden_state_size)
 masks = torch.zeros(1, 1)
 

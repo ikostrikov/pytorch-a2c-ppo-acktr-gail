@@ -55,9 +55,8 @@ def main():
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                         args.gamma, args.log_dir, args.add_timestep, device)
 
-    obs_shape = envs.observation_space.shape
 
-    actor_critic = Policy(obs_shape, envs.action_space,
+    actor_critic = Policy(envs.observation_space.shape, envs.action_space,
         base_kwargs={'recurrent': args.recurrent_policy})
     actor_critic.to(device)
 
@@ -75,8 +74,9 @@ def main():
         agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
                                args.entropy_coef, acktr=True)
 
-    rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape,
-        envs.action_space, actor_critic.recurrent_hidden_state_size)
+    rollouts = RolloutStorage(args.num_steps, args.num_processes,
+                        envs.observation_space.shape, envs.action_space,
+                        actor_critic.recurrent_hidden_state_size)
 
     obs = envs.reset()
     rollouts.obs[0].copy_(obs)
