@@ -2,6 +2,7 @@ import copy
 import glob
 import os
 import time
+import types
 from collections import deque
 
 import gym
@@ -158,6 +159,19 @@ def main():
         if args.eval_interval is not None and len(episode_rewards) > 1 and j % args.eval_interval == 0:
             eval_envs = make_vec_envs(args.env_name, args.seed + args.num_processes, args.num_processes,
                                 args.gamma, eval_log_dir, args.add_timestep, device, True)
+
+            if eval_envs.venv.__class__.__name__ == "VecNormalize":
+                eval_envs.venv.ob_rms = envs.venv.ob_rms
+
+                # An ugly hack to remove updates
+                def _obfilt(self, obs):
+                    if self.ob_rms:
+                        obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
+                        return obs
+                    else:
+                        return obs
+
+                eval_envs.venv._obfilt = types.MethodType(_obfilt, envs.venv)
 
             eval_episode_rewards = []
 
