@@ -38,6 +38,15 @@ except OSError:
     for f in files:
         os.remove(f)
 
+eval_log_dir = args.log_dir + "_eval"
+
+try:
+    os.makedirs(eval_log_dir)
+except OSError:
+    files = glob.glob(os.path.join(eval_log_dir, '*.monitor.csv'))
+    for f in files:
+        os.remove(f)
+
 
 def main():
     print("#######")
@@ -53,8 +62,7 @@ def main():
         win = None
 
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
-                        args.gamma, args.log_dir, args.add_timestep, device)
-
+                        args.gamma, args.log_dir, args.add_timestep, device, False)
 
     actor_critic = Policy(envs.observation_space.shape, envs.action_space,
         base_kwargs={'recurrent': args.recurrent_policy})
@@ -133,10 +141,11 @@ def main():
 
             torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
 
-        if j % args.log_interval == 0:
+        total_num_steps = (j + 1) * args.num_processes * args.num_steps
+
+        if j % args.log_interval == 0 and len(episode_rewards) > 1:
             end = time.time()
-            total_num_steps = (j + 1) * args.num_processes * args.num_steps
-            print("Updates {}, num timesteps {}, FPS {} \n Last {} episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}\n".
+            print("Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n".
                 format(j, total_num_steps,
                        int(total_num_steps / (end - start)),
                        len(episode_rewards),
@@ -145,6 +154,34 @@ def main():
                        np.min(episode_rewards),
                        np.max(episode_rewards), dist_entropy,
                        value_loss, action_loss))
+
+        if args.eval_interval is not None and len(episode_rewards) > 1 and j % args.eval_interval == 0:
+            eval_envs = make_vec_envs(args.env_name, args.seed + args.num_processes, args.num_processes,
+                                args.gamma, eval_log_dir, args.add_timestep, device, True)
+
+            eval_episode_rewards = []
+
+            obs = eval_envs.reset()
+            eval_recurrent_hidden_states = torch.zeros(args.num_processes,
+                            actor_critic.recurrent_hidden_state_size, device=device)
+            eval_masks = torch.zeros(args.num_processes, 1, device=device)
+
+            while len(eval_episode_rewards) < 10:
+                with torch.no_grad():
+                    _, action, _, eval_recurrent_hidden_states = actor_critic.act(
+                        obs, eval_recurrent_hidden_states, eval_masks, deterministic=True)
+
+                # Obser reward and next obs
+                obs, reward, done, infos = eval_envs.step(action)
+                eval_masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done])
+                for info in infos:
+                    if 'episode' in info.keys():
+                        eval_episode_rewards.append(info['episode']['r'])
+
+            print(" Evaluation using {} episodes: mean reward {:.5f}\n".
+                format(len(eval_episode_rewards),
+                       np.mean(eval_episode_rewards)))
+
         if args.vis and j % args.vis_interval == 0:
             try:
                 # Sometimes monitor doesn't properly flush the outputs

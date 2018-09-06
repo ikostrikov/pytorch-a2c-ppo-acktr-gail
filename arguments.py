@@ -40,7 +40,9 @@ def get_args():
     parser.add_argument('--log-interval', type=int, default=10,
                         help='log interval, one log per n updates (default: 10)')
     parser.add_argument('--save-interval', type=int, default=100,
-                        help='save interval, one save per n updates (default: 10)')
+                        help='save interval, one save per n updates (default: 100)')
+    parser.add_argument('--eval-interval', type=int, default=None,
+                        help='eval interval, one eval per n updates (default: None)')
     parser.add_argument('--vis-interval', type=int, default=100,
                         help='vis interval, one log per n updates (default: 100)')
     parser.add_argument('--num-frames', type=int, default=10e6,
