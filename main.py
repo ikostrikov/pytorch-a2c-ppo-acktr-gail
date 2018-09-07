@@ -50,10 +50,6 @@ except OSError:
 
 
 def main():
-    print("#######")
-    print("WARNING: All rewards are clipped or normalized so you need to use a monitor (see envs.py) or visdom plot to get true rewards")
-    print("#######")
-
     torch.set_num_threads(1)
     device = torch.device("cuda:0" if args.cuda else "cpu")
 
