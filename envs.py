@@ -77,7 +77,7 @@ def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep, d
         else:
             envs = VecNormalize(envs, gamma=gamma)
 
-    envs = VecPyTorch(envs)
+    envs = VecPyTorch(envs, device)
 
     if len(envs.observation_space.shape) == 3:
         envs = VecPyTorchFrameStack(envs, 4, device)
@@ -112,14 +112,15 @@ class TransposeImage(gym.ObservationWrapper):
 
 
 class VecPyTorch(VecEnvWrapper):
-    def __init__(self, venv):
+    def __init__(self, venv, device):
         """Return only every `skip`-th frame"""
         super(VecPyTorch, self).__init__(venv)
+        self.device = device
         # TODO: Fix data types
 
     def reset(self):
         obs = self.venv.reset()
-        obs = torch.from_numpy(obs).float()
+        obs = torch.from_numpy(obs).float().to(self.device)
         return obs
 
     def step_async(self, actions):
@@ -128,7 +129,7 @@ class VecPyTorch(VecEnvWrapper):
 
     def step_wait(self):
         obs, reward, done, info = self.venv.step_wait()
-        obs = torch.from_numpy(obs).float()
+        obs = torch.from_numpy(obs).float().to(self.device)
         reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
         return obs, reward, done, info
 
