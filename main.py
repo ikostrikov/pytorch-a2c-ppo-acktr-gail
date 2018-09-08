@@ -188,6 +188,8 @@ def main():
                     if 'episode' in info.keys():
                         eval_episode_rewards.append(info['episode']['r'])
 
+            eval_envs.close()
+
             print(" Evaluation using {} episodes: mean reward {:.5f}\n".
                 format(len(eval_episode_rewards),
                        np.mean(eval_episode_rewards)))
