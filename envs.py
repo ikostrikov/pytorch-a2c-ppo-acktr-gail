@@ -42,6 +42,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets):
         env.seed(seed + rank)
 
         obs_shape = env.observation_space.shape
+
         if add_timestep and len(
                 obs_shape) == 1 and str(env).find('TimeLimit') > -1:
             env = AddTimestep(env)
@@ -83,6 +84,15 @@ def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep, d
         envs = VecPyTorchFrameStack(envs, 4, device)
 
     return envs
+
+
+# Can be used to test recurrent policies for Reacher-v2
+class MaskGoal(gym.ObservationWrapper):
+    def observation(self, observation):
+        if self.env._elapsed_steps > 0:
+            observation[-2:0] = 0
+        return observation
+
 
 class AddTimestep(gym.ObservationWrapper):
     def __init__(self, env=None):
