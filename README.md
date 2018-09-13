@@ -1,13 +1,6 @@
 # pytorch-a2c-ppo-acktr
 
-## TODO (08/27/2018)
-
-- [ ] Add memory Reacher (provide target only for the first timestep, to test the recurrent policy)
-- [ ] Properly handle masking for continuing tasks, don't mask if ended because of max steps (see https://github.com/sfujim/TD3/blob/master/main.py#L123)
-
-
-## Update 10/06/2017: added enjoy.py and a link to pretrained models!
-## Update 09/27/2017: now supports both Atari and MuJoCo/Roboschool!
+## Please use hyper parameters from this readme. With other hyper parameters things might not work (it's RL after all)!
 
 This is a PyTorch implementation of
 * Advantage Actor Critic (A2C), a synchronous deterministic version of [A3C](https://arxiv.org/pdf/1602.01783v1.pdf)
@@ -77,6 +70,7 @@ It's extremely difficult to reproduce results for Reinforcement Learning methods
 * Improve this README file. Rearrange images.
 * Improve performance of KFAC, see kfac.py for more information
 * Run evaluation for all games and algorithms
+* Properly handle masking for continuing tasks, don't mask if ended because of max steps (see https://github.com/sfujim/TD3/blob/master/main.py#L123)
 
 ## Training
 
