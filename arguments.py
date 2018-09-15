@@ -59,13 +59,12 @@ def get_args():
                         help='add timestep to observations')
     parser.add_argument('--recurrent-policy', action='store_true', default=False,
                         help='use a recurrent policy')
-    parser.add_argument('--no-vis', action='store_true', default=False,
-                        help='disables visdom visualization')
+    parser.add_argument('--vis', action='store_true', default=False,
+                        help='enable visdom visualization')
     parser.add_argument('--port', type=int, default=8097,
                         help='port to run the server on (default: 8097)')
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
-    args.vis = not args.no_vis
 
     return args
