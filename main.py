@@ -2,7 +2,6 @@ import copy
 import glob
 import os
 import time
-import types
 from collections import deque
 
 import gym
@@ -17,6 +16,7 @@ from arguments import get_args
 from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage
+from utils import get_vec_normalize
 from visualize import visdom_plot
 
 args = get_args()
@@ -135,7 +135,7 @@ def main():
                 save_model = copy.deepcopy(actor_critic).cpu()
 
             save_model = [save_model,
-                            hasattr(envs.venv, 'ob_rms') and envs.venv.ob_rms or None]
+                          getattr(get_vec_normalize(envs), 'ob_rms', None)]
 
             torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
 
@@ -160,18 +160,10 @@ def main():
                 args.env_name, args.seed + args.num_processes, args.num_processes,
                 args.gamma, eval_log_dir, args.add_timestep, device, True)
 
-            if eval_envs.venv.__class__.__name__ == "VecNormalize":
-                eval_envs.venv.ob_rms = envs.venv.ob_rms
-
-                # An ugly hack to remove updates
-                def _obfilt(self, obs):
-                    if self.ob_rms:
-                        obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
-                        return obs
-                    else:
-                        return obs
-
-                eval_envs.venv._obfilt = types.MethodType(_obfilt, envs.venv)
+            vec_norm = get_vec_normalize(eval_envs)
+            if vec_norm is not None:
+                vec_norm.eval()
+                vec_norm.ob_rms = get_vec_normalize(envs).ob_rms
 
             eval_episode_rewards = []
 
