@@ -88,7 +88,7 @@ def main():
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=10)
-    
+
     start = time.time()
     for j in range(num_updates):
         for step in range(args.num_steps):
@@ -107,7 +107,8 @@ def main():
                     episode_rewards.append(info['episode']['r'])
 
             # If done then clean the history of observations.
-            masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done])
+            masks = torch.FloatTensor([[0.0] if done_ else [1.0]
+                                       for done_ in done])
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks)
 
         with torch.no_grad():
@@ -152,9 +153,12 @@ def main():
                        np.max(episode_rewards), dist_entropy,
                        value_loss, action_loss))
 
-        if args.eval_interval is not None and len(episode_rewards) > 1 and j % args.eval_interval == 0:
-            eval_envs = make_vec_envs(args.env_name, args.seed + args.num_processes, args.num_processes,
-                                args.gamma, eval_log_dir, args.add_timestep, device, True)
+        if (args.eval_interval is not None
+                and len(episode_rewards) > 1
+                and j % args.eval_interval == 0):
+            eval_envs = make_vec_envs(
+                args.env_name, args.seed + args.num_processes, args.num_processes,
+                args.gamma, eval_log_dir, args.add_timestep, device, True)
 
             if eval_envs.venv.__class__.__name__ == "VecNormalize":
                 eval_envs.venv.ob_rms = envs.venv.ob_rms
@@ -183,7 +187,9 @@ def main():
 
                 # Obser reward and next obs
                 obs, reward, done, infos = eval_envs.step(action)
-                eval_masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done])
+
+                eval_masks = torch.FloatTensor([[0.0] if done_ else [1.0]
+                                                for done_ in done])
                 for info in infos:
                     if 'episode' in info.keys():
                         eval_episode_rewards.append(info['episode']['r'])
