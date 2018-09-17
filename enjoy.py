@@ -1,13 +1,12 @@
 import argparse
 import os
-import types
 
 import numpy as np
 import torch
 
-from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
-from baselines.common.vec_env.vec_normalize import VecNormalize
 from envs import VecPyTorch, make_vec_envs
+from utils import get_render_func, get_vec_normalize
+
 
 parser = argparse.ArgumentParser(description='RL')
 parser.add_argument('--seed', type=int, default=1,
@@ -26,35 +25,16 @@ env = make_vec_envs(args.env_name, args.seed + 1000, 1,
                             None, None, args.add_timestep, device='cpu')
 
 # Get a render function
-render_func = None
-tmp_env = env
-while True:
-    if hasattr(tmp_env, 'envs'):
-        render_func = tmp_env.envs[0].render
-        break
-    elif hasattr(tmp_env, 'venv'):
-        tmp_env = tmp_env.venv
-    elif hasattr(tmp_env, 'env'):
-        tmp_env = tmp_env.env
-    else:
-        break
+render_func = get_render_func(env)
 
 # We need to use the same statistics for normalization as used in training
 actor_critic, ob_rms = \
             torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
 
-if isinstance(env.venv, VecNormalize):
-    env.venv.ob_rms = ob_rms
-
-    # An ugly hack to remove updates
-    def _obfilt(self, obs):
-        if self.ob_rms:
-            obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
-            return obs
-        else:
-            return obs
-
-    env.venv._obfilt = types.MethodType(_obfilt, env.venv)
+vec_norm = get_vec_normalize(envs)
+if vec_norm is not None:
+    vec_norm.eval()
+    vec_norm.ob_rms = ob_rms
 
 recurrent_hidden_states = torch.zeros(1, actor_critic.recurrent_hidden_state_size)
 masks = torch.zeros(1, 1)
