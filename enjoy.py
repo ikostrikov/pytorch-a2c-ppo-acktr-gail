@@ -22,7 +22,8 @@ parser.add_argument('--add-timestep', action='store_true', default=False,
 args = parser.parse_args()
 
 env = make_vec_envs(args.env_name, args.seed + 1000, 1,
-                            None, None, args.add_timestep, device='cpu')
+                            None, None, args.add_timestep, device='cpu',
+                            allow_early_resets=False)
 
 # Get a render function
 render_func = get_render_func(env)
@@ -31,7 +32,7 @@ render_func = get_render_func(env)
 actor_critic, ob_rms = \
             torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
 
-vec_norm = get_vec_normalize(envs)
+vec_norm = get_vec_normalize(env)
 if vec_norm is not None:
     vec_norm.eval()
     vec_norm.ob_rms = ob_rms
