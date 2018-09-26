@@ -48,11 +48,11 @@ class PPO():
 
             for sample in data_generator:
                 obs_batch, recurrent_hidden_states_batch, actions_batch, \
-                   return_batch, masks_batch, old_action_log_probs_batch, \
+                   value_preds_batch, return_batch, masks_batch, old_action_log_probs_batch, \
                         adv_targ = sample
 
                 # Reshape to do in a single forward pass for all steps
-                values, action_log_probs, dist_entropy, states = self.actor_critic.evaluate_actions(
+                values, action_log_probs, dist_entropy, _ = self.actor_critic.evaluate_actions(
                     obs_batch, recurrent_hidden_states_batch,
                     masks_batch, actions_batch)
 
@@ -62,7 +62,11 @@ class PPO():
                                            1.0 + self.clip_param) * adv_targ
                 action_loss = -torch.min(surr1, surr2).mean()
 
-                value_loss = F.mse_loss(return_batch, values)
+                value_pred_clipped = value_preds_batch + \
+                     (values - value_preds_batch).clamp(-self.clip_param, self.clip_param)
+                value_losses = (values - return_batch).pow(2)
+                value_losses_clipped = (value_pred_clipped - return_batch).pow(2)
+                value_loss = .5 * torch.max(value_losses, value_losses_clipped).mean()
 
                 self.optimizer.zero_grad()
                 (value_loss * self.value_loss_coef + action_loss -
