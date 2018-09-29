@@ -83,10 +83,11 @@ class NNBase(nn.Module):
 
         if recurrent:
             self.gru = nn.GRU(recurrent_input_size, hidden_size)
-            nn.init.orthogonal_(self.gru.weight_ih_l0.data)
-            nn.init.orthogonal_(self.gru.weight_hh_l0.data)
-            self.gru.bias_ih_l0.data.fill_(0)
-            self.gru.bias_hh_l0.data.fill_(0)
+            for name, param in self.gru.named_parameters():
+                if 'bias' in name:
+                    nn.init.constant_(param, 0)
+                elif 'weight' in name:
+                    nn.init.orthogonal_(param)
 
     @property
     def is_recurrent(self):
