@@ -126,7 +126,6 @@ class NNBase(nn.Module):
                             .squeeze()
                             .cpu())
 
-            # Otherwise, we will need to process the sequence in smaller chunks
 
             # +1 to correct the masks[1:]
             if has_zeros.dim() == 0:
