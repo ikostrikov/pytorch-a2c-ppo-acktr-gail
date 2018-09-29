@@ -159,7 +159,7 @@ class NNBase(nn.Module):
             x = torch.cat(outputs, dim=0)
             # flatten
             x = x.view(T * N, -1)
-            hxs = hxs.unsqueeze(0)
+            hxs = hxs.squeeze(0)
 
         return x, hxs
 
