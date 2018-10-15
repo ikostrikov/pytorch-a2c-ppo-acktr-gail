@@ -168,3 +168,27 @@ python enjoy.py --load-dir trained_models/ppo --env-name "Reacher-v2"
 ![QbertNoFrameskip-v4](imgs/acktr_qbert.png)
 
 ![beamriderNoFrameskip-v4](imgs/acktr_beamrider.png)
+
+## Visualization with tensorboard.
+
+### Requirements
+
+* [Tensorboard](https://github.com/tensorflow/tensorboard)
+* [tensorboardX](https://github.com/lanpa/tensorboardX)
+
+### Installation of requirements
+
+```bash
+pip install tensorboard￼
+pip install tensorboardX
+```
+
+### Using tensorboard to visualize training
+
+```bash
+python main.py --env-name "PongNoFrameskip-v4" --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 1 --num-processes 8 --num-steps 128 --num-mini-batch 4 --vis-interval 1 --log-interval 1 --tensorboard-logdir "/tmp/tfboard"
+tensorboard --logdir "/tmp/tfboard"
+```
+
+In a browser open [localhost:6006](http://localhost:6006). Note that a new folder is created every time training is 
+started with the current timestamp.

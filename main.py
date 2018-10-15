@@ -58,6 +58,13 @@ def main():
         viz = Visdom(port=args.port)
         win = None
 
+    tensorboard_writer = None
+    if args.tensorboard_logdir is not None:
+        from tensorboardX import SummaryWriter
+        import datetime
+        ts_str = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d_%H-%M-%S')
+        tensorboard_writer = SummaryWriter(log_dir=os.path.join(args.tensorboard_logdir, ts_str))
+
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                         args.gamma, args.log_dir, args.add_timestep, device, False)
 
@@ -150,8 +157,18 @@ def main():
                        np.mean(episode_rewards),
                        np.median(episode_rewards),
                        np.min(episode_rewards),
-                       np.max(episode_rewards), dist_entropy,
+                       np.max(episode_rewards),
+                       dist_entropy,
                        value_loss, action_loss))
+
+            if tensorboard_writer is not None:
+                tensorboard_writer.add_scalar("mean_reward", np.mean(episode_rewards), total_num_steps)
+                tensorboard_writer.add_scalar("median_reward", np.median(episode_rewards), total_num_steps)
+                tensorboard_writer.add_scalar("min_reward", np.min(episode_rewards), total_num_steps)
+                tensorboard_writer.add_scalar("max_reward", np.max(episode_rewards), total_num_steps)
+                tensorboard_writer.add_scalar("dist_entropy", dist_entropy, total_num_steps)
+                tensorboard_writer.add_scalar("value_loss", value_loss, total_num_steps)
+                tensorboard_writer.add_scalar("action_loss", action_loss, total_num_steps)
 
         if (args.eval_interval is not None
                 and len(episode_rewards) > 1
