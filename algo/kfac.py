@@ -159,6 +159,7 @@ class KFACOptimizer(optim.Optimizer):
             update_running_stat(aa, self.m_aa[module], self.stat_decay)
 
     def _save_grad_output(self, module, grad_input, grad_output):
+        # Accumulate statistics for Fisher matrices
         if self.acc_stats:
             classname = module.__class__.__name__
             layer_info = None
