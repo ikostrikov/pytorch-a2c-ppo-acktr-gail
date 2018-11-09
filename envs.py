@@ -55,7 +55,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets):
                                 allow_early_resets=allow_early_resets)
 
         if is_atari:
-            env = wrap_deepmind(env)
+            if len(env.observation_space.shape) == 3:
+                env = wrap_deepmind(env)
         elif len(env.observation_space.shape) == 3:
             raise NotImplementedError("CNN models work only for atari,\n"
                 "please use a custom wrapper for a custom pixel input env.\n"
