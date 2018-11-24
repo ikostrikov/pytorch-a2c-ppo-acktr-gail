@@ -63,6 +63,8 @@ def get_args():
                         help='use a recurrent policy')
     parser.add_argument('--use-linear-lr-decay', action='store_true', default=False,
                         help='use a linear schedule on the learning rate')
+    parser.add_argument('--use-linear-clip-decay', action='store_true', default=False,
+                        help='use a linear schedule on the ppo clipping parameter')
     parser.add_argument('--vis', action='store_true', default=False,
                         help='enable visdom visualization')
     parser.add_argument('--port', type=int, default=8097,
