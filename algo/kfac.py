@@ -1,9 +1,10 @@
 import math
 
 import torch
-import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
+
 from utils import AddBias
 
 # TODO: In order to make this code faster:
@@ -20,7 +21,8 @@ def _extract_patches(x, kernel_size, stride, padding):
     x = x.unfold(3, kernel_size[1], stride[1])
     x = x.transpose_(1, 2).transpose_(2, 3).contiguous()
     x = x.view(
-        x.size(0), x.size(1), x.size(2), x.size(3) * x.size(4) * x.size(5))
+        x.size(0), x.size(1), x.size(2),
+        x.size(3) * x.size(4) * x.size(5))
     return x
 
 
@@ -98,13 +100,13 @@ class KFACOptimizer(optim.Optimizer):
 
         def split_bias(module):
             for mname, child in module.named_children():
-                if hasattr(child, 'bias'):
+                if hasattr(child, 'bias') and child.bias is not None:
                     module._modules[mname] = SplitBias(child)
                 else:
                     split_bias(child)
 
         split_bias(model)
-            
+
         super(KFACOptimizer, self).__init__(model.parameters(), defaults)
 
         self.known_modules = {'Linear', 'Conv2d', 'AddBias'}
@@ -140,7 +142,7 @@ class KFACOptimizer(optim.Optimizer):
             momentum=self.momentum)
 
     def _save_input(self, module, input):
-        if input[0].volatile == False and self.steps % self.Ts == 0:
+        if torch.is_grad_enabled() and self.steps % self.Ts == 0:
             classname = module.__class__.__name__
             layer_info = None
             if classname == 'Conv2d':
@@ -157,6 +159,7 @@ class KFACOptimizer(optim.Optimizer):
             update_running_stat(aa, self.m_aa[module], self.stat_decay)
 
     def _save_grad_output(self, module, grad_input, grad_output):
+        # Accumulate statistics for Fisher matrices
         if self.acc_stats:
             classname = module.__class__.__name__
             layer_info = None
@@ -164,8 +167,8 @@ class KFACOptimizer(optim.Optimizer):
                 layer_info = (module.kernel_size, module.stride,
                               module.padding)
 
-            gg = compute_cov_g(grad_output[0].data, classname,
-                               layer_info, self.fast_cnn)
+            gg = compute_cov_g(grad_output[0].data, classname, layer_info,
+                               self.fast_cnn)
 
             # Initialize buffers
             if self.steps == 0:
@@ -203,14 +206,9 @@ class KFACOptimizer(optim.Optimizer):
                 # My asynchronous implementation exists, I will add it later.
                 # Experimenting with different ways to this in PyTorch.
                 self.d_a[m], self.Q_a[m] = torch.symeig(
-                    self.m_aa[m].cpu().double(), eigenvectors=True)
+                    self.m_aa[m], eigenvectors=True)
                 self.d_g[m], self.Q_g[m] = torch.symeig(
-                    self.m_gg[m].cpu().double(), eigenvectors=True)
-                self.d_a[m], self.Q_a[m] = self.d_a[m].float(), self.Q_a[m].float()
-                self.d_g[m], self.Q_g[m] = self.d_g[m].float(), self.Q_g[m].float()
-                if self.m_aa[m].is_cuda:
-                    self.d_a[m], self.Q_a[m] = self.d_a[m].cuda(), self.Q_a[m].cuda()
-                    self.d_g[m], self.Q_g[m] = self.d_g[m].cuda(), self.Q_g[m].cuda()
+                    self.m_gg[m], eigenvectors=True)
 
                 self.d_a[m].mul_((self.d_a[m] > 1e-6).float())
                 self.d_g[m].mul_((self.d_g[m] > 1e-6).float())

@@ -2,6 +2,7 @@ import copy
 import glob
 import os
 import time
+from collections import deque
 
 import gym
 import numpy as np
@@ -9,16 +10,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.autograd import Variable
 
+import algo
 from arguments import get_args
-from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from baselines.common.vec_env.vec_normalize import VecNormalize
-from envs import make_env
-from kfac import KFACOptimizer
-from model import CNNPolicy, MLPPolicy
+from envs import make_vec_envs
+from model import Policy
 from storage import RolloutStorage
+from utils import get_vec_normalize
 from visualize import visdom_plot
 from utils import update_linear_schedule
 
@@ -32,8 +30,11 @@ if args.recurrent_policy:
 num_updates = int(args.num_frames) // args.num_steps // args.num_processes
 
 torch.manual_seed(args.seed)
-if args.cuda:
-    torch.cuda.manual_seed(args.seed)
+torch.cuda.manual_seed_all(args.seed)
+
+if args.cuda and torch.cuda.is_available() and args.cuda_deterministic:
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
 
 try:
     os.makedirs(args.log_dir)
@@ -42,77 +43,55 @@ except OSError:
     for f in files:
         os.remove(f)
 
+eval_log_dir = args.log_dir + "_eval"
+
+try:
+    os.makedirs(eval_log_dir)
+except OSError:
+    files = glob.glob(os.path.join(eval_log_dir, '*.monitor.csv'))
+    for f in files:
+        os.remove(f)
+
 
 def main():
-    print("#######")
-    print("WARNING: All rewards are clipped or normalized so you need to use a monitor (see envs.py) or visdom plot to get true rewards")
-    print("#######")
-
-    os.environ['OMP_NUM_THREADS'] = '1'
+    torch.set_num_threads(1)
+    device = torch.device("cuda:0" if args.cuda else "cpu")
 
     if args.vis:
         from visdom import Visdom
-        viz = Visdom()
+        viz = Visdom(port=args.port)
         win = None
 
-    envs = [make_env(args.env_name, args.seed, i, args.log_dir)
-                for i in range(args.num_processes)]
+    envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
+                        args.gamma, args.log_dir, args.add_timestep, device, False)
 
-    if args.num_processes > 1:
-        envs = SubprocVecEnv(envs)
-    else:
-        envs = DummyVecEnv(envs)
-
-    if len(envs.observation_space.shape) == 1:
-        envs = VecNormalize(envs)
-
-    obs_shape = envs.observation_space.shape
-    obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
-
-    if len(envs.observation_space.shape) == 3:
-        actor_critic = CNNPolicy(obs_shape[0], envs.action_space, args.recurrent_policy)
-    else:
-        assert not args.recurrent_policy, \
-            "Recurrent policy is not implemented for the MLP controller"
-        actor_critic = MLPPolicy(obs_shape[0], envs.action_space)
-
-    if envs.action_space.__class__.__name__ == "Discrete":
-        action_shape = 1
-    else:
-        action_shape = envs.action_space.shape[0]
-
-    if args.cuda:
-        actor_critic.cuda()
+    actor_critic = Policy(envs.observation_space.shape, envs.action_space,
+        base_kwargs={'recurrent': args.recurrent_policy})
+    actor_critic.to(device)
 
     if args.algo == 'a2c':
-        optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
+        agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
+                               args.entropy_coef, lr=args.lr,
+                               eps=args.eps, alpha=args.alpha,
+                               max_grad_norm=args.max_grad_norm)
     elif args.algo == 'ppo':
-        optimizer = optim.Adam(actor_critic.parameters(), args.lr, eps=args.eps)
+        agent = algo.PPO(actor_critic, args.clip_param, args.ppo_epoch, args.num_mini_batch,
+                         args.value_loss_coef, args.entropy_coef, lr=args.lr,
+                               eps=args.eps,
+                               max_grad_norm=args.max_grad_norm)
     elif args.algo == 'acktr':
-        optimizer = KFACOptimizer(actor_critic)
+        agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
+                               args.entropy_coef, acktr=True)
 
-    rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
-    current_obs = torch.zeros(args.num_processes, *obs_shape)
-
-    def update_current_obs(obs):
-        shape_dim0 = envs.observation_space.shape[0]
-        obs = torch.from_numpy(obs).float()
-        if args.num_stack > 1:
-            current_obs[:, :-shape_dim0] = current_obs[:, shape_dim0:]
-        current_obs[:, -shape_dim0:] = obs
+    rollouts = RolloutStorage(args.num_steps, args.num_processes,
+                        envs.observation_space.shape, envs.action_space,
+                        actor_critic.recurrent_hidden_state_size)
 
     obs = envs.reset()
-    update_current_obs(obs)
+    rollouts.obs[0].copy_(obs)
+    rollouts.to(device)
 
-    rollouts.observations[0].copy_(current_obs)
-
-    # These variables are used to compute average rewards for all processes.
-    episode_rewards = torch.zeros([args.num_processes, 1])
-    final_rewards = torch.zeros([args.num_processes, 1])
-
-    if args.cuda:
-        current_obs = current_obs.cuda()
-        rollouts.cuda()
+    episode_rewards = deque(maxlen=10)
 
     start = time.time()
     for j in range(num_updates):
@@ -127,112 +106,32 @@ def main():
 
         for step in range(args.num_steps):
             # Sample actions
-            value, action, action_log_prob, states = actor_critic.act(Variable(rollouts.observations[step], volatile=True),
-                                                                      Variable(rollouts.states[step], volatile=True),
-                                                                      Variable(rollouts.masks[step], volatile=True))
-            cpu_actions = action.data.squeeze(1).cpu().numpy()
+            with torch.no_grad():
+                value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
+                        rollouts.obs[step],
+                        rollouts.recurrent_hidden_states[step],
+                        rollouts.masks[step])
 
             # Obser reward and next obs
-            obs, reward, done, info = envs.step(cpu_actions)
-            reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()
-            episode_rewards += reward
+            obs, reward, done, infos = envs.step(action)
+
+            for info in infos:
+                if 'episode' in info.keys():
+                    episode_rewards.append(info['episode']['r'])
 
             # If done then clean the history of observations.
-            masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done])
-            final_rewards *= masks
-            final_rewards += (1 - masks) * episode_rewards
-            episode_rewards *= masks
+            masks = torch.FloatTensor([[0.0] if done_ else [1.0]
+                                       for done_ in done])
+            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks)
 
-            if args.cuda:
-                masks = masks.cuda()
-
-            if current_obs.dim() == 4:
-                current_obs *= masks.unsqueeze(2).unsqueeze(2)
-            else:
-                current_obs *= masks
-
-            update_current_obs(obs)
-            rollouts.insert(step, current_obs, states.data, action.data, action_log_prob.data, value.data, reward, masks)
-
-        next_value = actor_critic(Variable(rollouts.observations[-1], volatile=True),
-                                  Variable(rollouts.states[-1], volatile=True),
-                                  Variable(rollouts.masks[-1], volatile=True))[0].data
+        with torch.no_grad():
+            next_value = actor_critic.get_value(rollouts.obs[-1],
+                                                rollouts.recurrent_hidden_states[-1],
+                                                rollouts.masks[-1]).detach()
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        if args.algo in ['a2c', 'acktr']:
-            values, action_log_probs, dist_entropy, states = actor_critic.evaluate_actions(Variable(rollouts.observations[:-1].view(-1, *obs_shape)),
-                                                                                           Variable(rollouts.states[0].view(-1, actor_critic.state_size)),
-                                                                                           Variable(rollouts.masks[:-1].view(-1, 1)),
-                                                                                           Variable(rollouts.actions.view(-1, action_shape)))
-
-            values = values.view(args.num_steps, args.num_processes, 1)
-            action_log_probs = action_log_probs.view(args.num_steps, args.num_processes, 1)
-
-            advantages = Variable(rollouts.returns[:-1]) - values
-            value_loss = advantages.pow(2).mean()
-
-            action_loss = -(Variable(advantages.data) * action_log_probs).mean()
-
-            if args.algo == 'acktr' and optimizer.steps % optimizer.Ts == 0:
-                # Sampled fisher, see Martens 2014
-                actor_critic.zero_grad()
-                pg_fisher_loss = -action_log_probs.mean()
-
-                value_noise = Variable(torch.randn(values.size()))
-                if args.cuda:
-                    value_noise = value_noise.cuda()
-
-                sample_values = values + value_noise
-                vf_fisher_loss = -(values - Variable(sample_values.data)).pow(2).mean()
-
-                fisher_loss = pg_fisher_loss + vf_fisher_loss
-                optimizer.acc_stats = True
-                fisher_loss.backward(retain_graph=True)
-                optimizer.acc_stats = False
-
-            optimizer.zero_grad()
-            (value_loss * args.value_loss_coef + action_loss - dist_entropy * args.entropy_coef).backward()
-
-            if args.algo == 'a2c':
-                nn.utils.clip_grad_norm(actor_critic.parameters(), args.max_grad_norm)
-
-            optimizer.step()
-        elif args.algo == 'ppo':
-            advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
-            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-5)
-
-            for e in range(args.ppo_epoch):
-                if args.recurrent_policy:
-                    data_generator = rollouts.recurrent_generator(advantages,
-                                                            args.num_mini_batch)
-                else:
-                    data_generator = rollouts.feed_forward_generator(advantages,
-                                                            args.num_mini_batch)
-
-                for sample in data_generator:
-                    observations_batch, states_batch, actions_batch, \
-                       return_batch, masks_batch, old_action_log_probs_batch, \
-                            adv_targ = sample
-
-                    # Reshape to do in a single forward pass for all steps
-                    values, action_log_probs, dist_entropy, states = actor_critic.evaluate_actions(Variable(observations_batch),
-                                                                                                   Variable(states_batch),
-                                                                                                   Variable(masks_batch),
-                                                                                                   Variable(actions_batch))
-
-                    adv_targ = Variable(adv_targ)
-                    ratio = torch.exp(action_log_probs - Variable(old_action_log_probs_batch))
-                    surr1 = ratio * adv_targ
-                    surr2 = torch.clamp(ratio, 1.0 - args.clip_param, 1.0 + args.clip_param) * adv_targ
-                    action_loss = -torch.min(surr1, surr2).mean() # PPO's pessimistic surrogate (L^CLIP)
-
-                    value_loss = (Variable(return_batch) - values).pow(2).mean()
-
-                    optimizer.zero_grad()
-                    (value_loss + action_loss - dist_entropy * args.entropy_coef).backward()
-                    nn.utils.clip_grad_norm(actor_critic.parameters(), args.max_grad_norm)
-                    optimizer.step()
+        value_loss, action_loss, dist_entropy = agent.update(rollouts)
 
         rollouts.after_update()
 
@@ -249,27 +148,71 @@ def main():
                 save_model = copy.deepcopy(actor_critic).cpu()
 
             save_model = [save_model,
-                            hasattr(envs, 'ob_rms') and envs.ob_rms or None]
+                          getattr(get_vec_normalize(envs), 'ob_rms', None)]
 
             torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
 
-        if j % args.log_interval == 0:
+        total_num_steps = (j + 1) * args.num_processes * args.num_steps
+
+        if j % args.log_interval == 0 and len(episode_rewards) > 1:
             end = time.time()
-            total_num_steps = (j + 1) * args.num_processes * args.num_steps
-            print("Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
+            print("Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n".
                 format(j, total_num_steps,
                        int(total_num_steps / (end - start)),
-                       final_rewards.mean(),
-                       final_rewards.median(),
-                       final_rewards.min(),
-                       final_rewards.max(), dist_entropy.data[0],
-                       value_loss.data[0], action_loss.data[0]))
+                       len(episode_rewards),
+                       np.mean(episode_rewards),
+                       np.median(episode_rewards),
+                       np.min(episode_rewards),
+                       np.max(episode_rewards), dist_entropy,
+                       value_loss, action_loss))
+
+        if (args.eval_interval is not None
+                and len(episode_rewards) > 1
+                and j % args.eval_interval == 0):
+            eval_envs = make_vec_envs(
+                args.env_name, args.seed + args.num_processes, args.num_processes,
+                args.gamma, eval_log_dir, args.add_timestep, device, True)
+
+            vec_norm = get_vec_normalize(eval_envs)
+            if vec_norm is not None:
+                vec_norm.eval()
+                vec_norm.ob_rms = get_vec_normalize(envs).ob_rms
+
+            eval_episode_rewards = []
+
+            obs = eval_envs.reset()
+            eval_recurrent_hidden_states = torch.zeros(args.num_processes,
+                            actor_critic.recurrent_hidden_state_size, device=device)
+            eval_masks = torch.zeros(args.num_processes, 1, device=device)
+
+            while len(eval_episode_rewards) < 10:
+                with torch.no_grad():
+                    _, action, _, eval_recurrent_hidden_states = actor_critic.act(
+                        obs, eval_recurrent_hidden_states, eval_masks, deterministic=True)
+
+                # Obser reward and next obs
+                obs, reward, done, infos = eval_envs.step(action)
+
+                eval_masks = torch.FloatTensor([[0.0] if done_ else [1.0]
+                                                for done_ in done])
+                for info in infos:
+                    if 'episode' in info.keys():
+                        eval_episode_rewards.append(info['episode']['r'])
+
+            eval_envs.close()
+
+            print(" Evaluation using {} episodes: mean reward {:.5f}\n".
+                format(len(eval_episode_rewards),
+                       np.mean(eval_episode_rewards)))
+
         if args.vis and j % args.vis_interval == 0:
             try:
                 # Sometimes monitor doesn't properly flush the outputs
-                win = visdom_plot(viz, win, args.log_dir, args.env_name, args.algo)
+                win = visdom_plot(viz, win, args.log_dir, args.env_name,
+                                  args.algo, args.num_frames)
             except IOError:
                 pass
+
 
 if __name__ == "__main__":
     main()
