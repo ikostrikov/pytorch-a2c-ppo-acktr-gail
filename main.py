@@ -18,6 +18,7 @@ from model import Policy
 from storage import RolloutStorage
 from utils import get_vec_normalize
 from visualize import visdom_plot
+from utils import update_linear_schedule
 
 args = get_args()
 
@@ -94,6 +95,15 @@ def main():
 
     start = time.time()
     for j in range(num_updates):
+
+        if args.use_linear_lr_decay:
+            # decrease learning rate linearly
+            if args.algo == "acktr":
+                # use optimizer's learning rate since it's hard-coded in kfac.py
+                update_linear_schedule(agent.optimizer, j, num_updates, agent.optimizer.lr)
+            else:
+                update_linear_schedule(agent.optimizer, j, num_updates, args.lr)
+
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
