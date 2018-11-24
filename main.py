@@ -96,7 +96,7 @@ def main():
     start = time.time()
     for j in range(num_updates):
 
-        if args.lr_schedule:
+        if args.use_linear_lr_decay:
             # decrease learning rate linearly
             if args.algo == "acktr":
                 # use optimizer's learning rate since it's hard-coded in kfac.py
