@@ -27,7 +27,7 @@ if args.recurrent_policy:
     assert args.algo in ['a2c', 'ppo'], \
         'Recurrent policy is not implemented for ACKTR'
 
-num_updates = int(args.num_frames) // args.num_steps // args.num_processes
+num_updates = int(args.num_env_steps) // args.num_steps // args.num_processes
 
 torch.manual_seed(args.seed)
 torch.cuda.manual_seed_all(args.seed)
@@ -138,7 +138,8 @@ def main():
 
         rollouts.after_update()
 
-        if j % args.save_interval == 0 and args.save_dir != "":
+        # save for every interval-th episode or for the last epoch
+        if (j % args.save_interval == 0 or j == num_updates - 1) and args.save_dir != "":
             save_path = os.path.join(args.save_dir, args.algo)
             try:
                 os.makedirs(save_path)
@@ -212,7 +213,7 @@ def main():
             try:
                 # Sometimes monitor doesn't properly flush the outputs
                 win = visdom_plot(viz, win, args.log_dir, args.env_name,
-                                  args.algo, args.num_frames)
+                                  args.algo, args.num_env_steps)
             except IOError:
                 pass
 
