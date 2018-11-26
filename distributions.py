@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils import AddBias, init, init_normc_
+from utils import AddBias, init
 
 """
 Modify standard PyTorch distributions so they are compatible with this code.
@@ -51,7 +51,7 @@ class DiagGaussian(nn.Module):
         super(DiagGaussian, self).__init__()
 
         init_ = lambda m: init(m,
-              init_normc_,
+              nn.init.orthogonal_,
               lambda x: nn.init.constant_(x, 0))
 
         self.fc_mean = init_(nn.Linear(num_inputs, num_outputs))
