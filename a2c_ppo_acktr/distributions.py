@@ -32,8 +32,8 @@ FixedNormal = torch.distributions.Normal
 log_prob_normal = FixedNormal.log_prob
 FixedNormal.log_probs = lambda self, actions: log_prob_normal(self, actions).sum(-1, keepdim=True)
 
-entropy = FixedNormal.entropy
-FixedNormal.entropy = lambda self: entropy(self).sum(-1)
+normal_entropy = FixedNormal.entropy
+FixedNormal.entropy = lambda self: normal_entropy(self).sum(-1)
 
 FixedNormal.mode = lambda self: self.mean
 
@@ -44,8 +44,8 @@ FixedBernoulli = torch.distributions.Bernoulli
 log_prob_bernoulli = FixedBernoulli.log_prob
 FixedBernoulli.log_probs = lambda self, actions: log_prob_bernoulli(self, actions).view(actions.size(0), -1).sum(-1).unsqueeze(-1)
 
-entropy = FixedBernoulli.entropy
-FixedBernoulli.entropy = lambda self: entropy(self).sum(-1)
+bernoulli_entropy = FixedBernoulli.entropy
+FixedBernoulli.entropy = lambda self: bernoulli_entropy(self).sum(-1)
 FixedBernoulli.mode = lambda self: torch.gt(self.probs, 0.5).float()
 
 
