@@ -104,7 +104,7 @@ def main():
             else:
                 update_linear_schedule(agent.optimizer, j, num_updates, args.lr)
 
-        if args.algo == 'ppo' and args.use_linear_lr_decay:
+        if args.algo == 'ppo' and args.use_linear_clip_decay:
             agent.clip_param = args.clip_param  * (1 - j / float(num_updates))
 
         for step in range(args.num_steps):
