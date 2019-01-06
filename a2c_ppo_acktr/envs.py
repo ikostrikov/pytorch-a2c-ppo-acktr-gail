@@ -210,7 +210,10 @@ class VecPyTorchFrameStack(VecEnvWrapper):
 
     def reset(self):
         obs = self.venv.reset()
-        self.stacked_obs = torch.zeros(self.stacked_obs.shape)
+        if torch.backends.cudnn.deterministic:
+            self.stacked_obs = torch.zeros(self.stacked_obs.shape)
+        else:
+            self.stacked_obs.zero_()
         self.stacked_obs[:, -self.shape_dim0:] = obs
         return self.stacked_obs
 
