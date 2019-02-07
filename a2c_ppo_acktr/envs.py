@@ -65,7 +65,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets):
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
         obs_shape = env.observation_space.shape
         if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
-            env = TransposeObs(env)
+            env = TransposeImage(env)
 
         return env
 
@@ -119,13 +119,19 @@ class AddTimestep(gym.ObservationWrapper):
 
 
 class TransposeObs(gym.ObservationWrapper):
-    def __init__(self, env=None, op="chw"):
+    def __init__(self, env=None):
         """
-        Transpose the observation space
-        Particularly for images
-        TODO: Transpose Class for all kinds of observations (other than images)
+        Transpose observation space (base class)
         """
         super(TransposeObs, self).__init__(env)
+
+
+class TransposeImage(TransposeObs):
+    def __init__(self, env=None, op="chw"):
+        """
+        Transpose observation space for images
+        """
+        super(TransposeImage, self).__init__(env)
         self.op = self._set_op(op)
         obs_shape = self.observation_space.shape
         self.observation_space = Box(
