@@ -65,7 +65,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets):
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
         obs_shape = env.observation_space.shape
         if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
-            env = TransposeImage(env)
+            env = TransposeObs(env)
 
         return env
 
@@ -118,18 +118,35 @@ class AddTimestep(gym.ObservationWrapper):
         return np.concatenate((observation, [self.env._elapsed_steps]))
 
 
-class TransposeImage(gym.ObservationWrapper):
-    def __init__(self, env=None):
-        super(TransposeImage, self).__init__(env)
+class TransposeObs(gym.ObservationWrapper):
+    def __init__(self, env=None, op="chw"):
+        """
+        Transpose the observation space
+        Particularly for images
+        TODO: Transpose Class for all kinds of observations (other than images)
+        """
+        super(TransposeObs, self).__init__(env)
+        self.op = self._set_op(op)
         obs_shape = self.observation_space.shape
         self.observation_space = Box(
             self.observation_space.low[0, 0, 0],
             self.observation_space.high[0, 0, 0],
-            [obs_shape[2], obs_shape[1], obs_shape[0]],
+            [
+                obs_shape[self.op[0]],
+                obs_shape[self.op[1]],
+                obs_shape[self.op[2]]],
             dtype=self.observation_space.dtype)
 
-    def observation(self, observation):
-        return observation.transpose(2, 0, 1)
+    def observation(self, ob):
+        return ob.transpose(self.op[0], self.op[1], self.op[2])
+
+    def _set_op(self, op):
+        ops = {
+            "chw": [2, 0, 1],  # hwc -> chw
+            "cwh": [2, 1, 0],  # hwc -> cwh
+        }
+        assert op in ops, f"The given transpose operation, {op}, is not available."
+        return ops[op]
 
 
 class VecPyTorch(VecEnvWrapper):
