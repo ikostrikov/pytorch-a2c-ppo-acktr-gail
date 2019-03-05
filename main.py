@@ -128,7 +128,7 @@ def main():
                                        for done_ in done])
             bad_masks = torch.FloatTensor([[0.0] if 'bad_transition' in info.keys() else [1.0]
                                        for info in infos])
-            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, masks)
+            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, bad_masks)
 
         with torch.no_grad():
             next_value = actor_critic.get_value(rollouts.obs[-1],

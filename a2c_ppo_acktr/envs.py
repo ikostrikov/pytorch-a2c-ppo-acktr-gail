@@ -101,7 +101,7 @@ class TimeLimitMask(gym.Wrapper):
     def step(self, action):
         obs, rew, done, info = self.env.step(action)
         if done and self.env._max_episode_steps == self.env._elapsed_steps:
-                info['bad_transition'] = True
+            info['bad_transition'] = True
         
         return obs, rew, done, info
 
