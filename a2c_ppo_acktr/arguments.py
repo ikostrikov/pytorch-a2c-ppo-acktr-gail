@@ -63,10 +63,6 @@ def get_args():
                         help='use a linear schedule on the learning rate')
     parser.add_argument('--use-linear-clip-decay', action='store_true', default=False,
                         help='use a linear schedule on the ppo clipping parameter')
-    parser.add_argument('--vis', action='store_true', default=False,
-                        help='enable visdom visualization')
-    parser.add_argument('--port', type=int, default=8097,
-                        help='port to run the server on (default: 8097)')
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
