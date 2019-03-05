@@ -1,0 +1,192 @@
+session_name: run-all
+windows:
+- panes:
+  - python main.py --env-name Reacher-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/reacher/reacher-0 --seed 0 --use-proper-time-limits
+  - python main.py --env-name HalfCheetah-v2 --algo ppo --use-gae --log-interval 1
+    --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef
+    0.5 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps
+    1000000 --use-linear-lr-decay --no-cuda --log-dir /tmp/gym/halfcheetah/halfcheetah-0
+    --seed 0 --use-proper-time-limits
+  - python main.py --env-name Walker2d-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/walker2d/walker2d-0 --seed 0 --use-proper-time-limits
+  - python main.py --env-name Hopper-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/hopper/hopper-0 --seed 0 --use-proper-time-limits
+  window_name: seed-0
+- panes:
+  - python main.py --env-name Reacher-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/reacher/reacher-1 --seed 1 --use-proper-time-limits
+  - python main.py --env-name HalfCheetah-v2 --algo ppo --use-gae --log-interval 1
+    --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef
+    0.5 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps
+    1000000 --use-linear-lr-decay --no-cuda --log-dir /tmp/gym/halfcheetah/halfcheetah-1
+    --seed 1 --use-proper-time-limits
+  - python main.py --env-name Walker2d-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/walker2d/walker2d-1 --seed 1 --use-proper-time-limits
+  - python main.py --env-name Hopper-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/hopper/hopper-1 --seed 1 --use-proper-time-limits
+  window_name: seed-1
+- panes:
+  - python main.py --env-name Reacher-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/reacher/reacher-2 --seed 2 --use-proper-time-limits
+  - python main.py --env-name HalfCheetah-v2 --algo ppo --use-gae --log-interval 1
+    --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef
+    0.5 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps
+    1000000 --use-linear-lr-decay --no-cuda --log-dir /tmp/gym/halfcheetah/halfcheetah-2
+    --seed 2 --use-proper-time-limits
+  - python main.py --env-name Walker2d-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/walker2d/walker2d-2 --seed 2 --use-proper-time-limits
+  - python main.py --env-name Hopper-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/hopper/hopper-2 --seed 2 --use-proper-time-limits
+  window_name: seed-2
+- panes:
+  - python main.py --env-name Reacher-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/reacher/reacher-3 --seed 3 --use-proper-time-limits
+  - python main.py --env-name HalfCheetah-v2 --algo ppo --use-gae --log-interval 1
+    --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef
+    0.5 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps
+    1000000 --use-linear-lr-decay --no-cuda --log-dir /tmp/gym/halfcheetah/halfcheetah-3
+    --seed 3 --use-proper-time-limits
+  - python main.py --env-name Walker2d-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/walker2d/walker2d-3 --seed 3 --use-proper-time-limits
+  - python main.py --env-name Hopper-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/hopper/hopper-3 --seed 3 --use-proper-time-limits
+  window_name: seed-3
+- panes:
+  - python main.py --env-name Reacher-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/reacher/reacher-4 --seed 4 --use-proper-time-limits
+  - python main.py --env-name HalfCheetah-v2 --algo ppo --use-gae --log-interval 1
+    --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef
+    0.5 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps
+    1000000 --use-linear-lr-decay --no-cuda --log-dir /tmp/gym/halfcheetah/halfcheetah-4
+    --seed 4 --use-proper-time-limits
+  - python main.py --env-name Walker2d-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/walker2d/walker2d-4 --seed 4 --use-proper-time-limits
+  - python main.py --env-name Hopper-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/hopper/hopper-4 --seed 4 --use-proper-time-limits
+  window_name: seed-4
+- panes:
+  - python main.py --env-name Reacher-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/reacher/reacher-5 --seed 5 --use-proper-time-limits
+  - python main.py --env-name HalfCheetah-v2 --algo ppo --use-gae --log-interval 1
+    --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef
+    0.5 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps
+    1000000 --use-linear-lr-decay --no-cuda --log-dir /tmp/gym/halfcheetah/halfcheetah-5
+    --seed 5 --use-proper-time-limits
+  - python main.py --env-name Walker2d-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/walker2d/walker2d-5 --seed 5 --use-proper-time-limits
+  - python main.py --env-name Hopper-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/hopper/hopper-5 --seed 5 --use-proper-time-limits
+  window_name: seed-5
+- panes:
+  - python main.py --env-name Reacher-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/reacher/reacher-6 --seed 6 --use-proper-time-limits
+  - python main.py --env-name HalfCheetah-v2 --algo ppo --use-gae --log-interval 1
+    --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef
+    0.5 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps
+    1000000 --use-linear-lr-decay --no-cuda --log-dir /tmp/gym/halfcheetah/halfcheetah-6
+    --seed 6 --use-proper-time-limits
+  - python main.py --env-name Walker2d-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/walker2d/walker2d-6 --seed 6 --use-proper-time-limits
+  - python main.py --env-name Hopper-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/hopper/hopper-6 --seed 6 --use-proper-time-limits
+  window_name: seed-6
+- panes:
+  - python main.py --env-name Reacher-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/reacher/reacher-7 --seed 7 --use-proper-time-limits
+  - python main.py --env-name HalfCheetah-v2 --algo ppo --use-gae --log-interval 1
+    --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef
+    0.5 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps
+    1000000 --use-linear-lr-decay --no-cuda --log-dir /tmp/gym/halfcheetah/halfcheetah-7
+    --seed 7 --use-proper-time-limits
+  - python main.py --env-name Walker2d-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/walker2d/walker2d-7 --seed 7 --use-proper-time-limits
+  - python main.py --env-name Hopper-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/hopper/hopper-7 --seed 7 --use-proper-time-limits
+  window_name: seed-7
+- panes:
+  - python main.py --env-name Reacher-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/reacher/reacher-8 --seed 8 --use-proper-time-limits
+  - python main.py --env-name HalfCheetah-v2 --algo ppo --use-gae --log-interval 1
+    --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef
+    0.5 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps
+    1000000 --use-linear-lr-decay --no-cuda --log-dir /tmp/gym/halfcheetah/halfcheetah-8
+    --seed 8 --use-proper-time-limits
+  - python main.py --env-name Walker2d-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/walker2d/walker2d-8 --seed 8 --use-proper-time-limits
+  - python main.py --env-name Hopper-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/hopper/hopper-8 --seed 8 --use-proper-time-limits
+  window_name: seed-8
+- panes:
+  - python main.py --env-name Reacher-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/reacher/reacher-9 --seed 9 --use-proper-time-limits
+  - python main.py --env-name HalfCheetah-v2 --algo ppo --use-gae --log-interval 1
+    --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef
+    0.5 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps
+    1000000 --use-linear-lr-decay --no-cuda --log-dir /tmp/gym/halfcheetah/halfcheetah-9
+    --seed 9 --use-proper-time-limits
+  - python main.py --env-name Walker2d-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/walker2d/walker2d-9 --seed 9 --use-proper-time-limits
+  - python main.py --env-name Hopper-v2 --algo ppo --use-gae --log-interval 1 --num-steps
+    2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch
+    10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+    --no-cuda --log-dir /tmp/gym/hopper/hopper-9 --seed 9 --use-proper-time-limits
+  window_name: seed-9
