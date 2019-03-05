@@ -29,7 +29,7 @@ except ImportError:
     pass
 
 
-def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets):
+def make_env(env_id, seed, rank, log_dir, allow_early_resets):
     def _thunk():
         if env_id.startswith("dm"):
             _, domain, task = env_id.split('.')
@@ -45,15 +45,14 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets):
         env.seed(seed + rank)
 
         obs_shape = env.observation_space.shape
-
-        if add_timestep and len(
-                obs_shape) == 1 and str(env).find('TimeLimit') > -1:
-            env = AddTimestep(env)
-
+        
+        if str(env.__class__.__name__).find('TimeLimit') >= 0:
+            env = TimeLimitMask(env)
+        
         if log_dir is not None:
             env = bench.Monitor(env, os.path.join(log_dir, str(rank)),
                                 allow_early_resets=allow_early_resets)
-
+            
         if is_atari:
             if len(env.observation_space.shape) == 3:
                 env = wrap_deepmind(env)
@@ -71,9 +70,9 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets):
 
     return _thunk
 
-def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
+def make_vec_envs(env_name, seed, num_processes, gamma, log_dir,
                   device, allow_early_resets, num_frame_stack=None):
-    envs = [make_env(env_name, seed, i, log_dir, add_timestep, allow_early_resets)
+    envs = [make_env(env_name, seed, i, log_dir, allow_early_resets)
             for i in range(num_processes)]
 
     if len(envs) > 1:
@@ -97,25 +96,24 @@ def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
     return envs
 
 
+# Checks whether done was caused my timit limits or not
+class TimeLimitMask(gym.Wrapper):
+    def step(self, action):
+        obs, rew, done, info = self.env.step(action)
+        if done and self.env._max_episode_steps == self.env._elapsed_steps:
+                info['bad_transition'] = True
+        
+        return obs, rew, done, info
+
+    def reset(self, **kwargs):
+        return self.env.reset(**kwargs) 
+
 # Can be used to test recurrent policies for Reacher-v2
 class MaskGoal(gym.ObservationWrapper):
     def observation(self, observation):
         if self.env._elapsed_steps > 0:
             observation[-2:0] = 0
         return observation
-
-
-class AddTimestep(gym.ObservationWrapper):
-    def __init__(self, env=None):
-        super(AddTimestep, self).__init__(env)
-        self.observation_space = Box(
-            self.observation_space.low[0],
-            self.observation_space.high[0],
-            [self.observation_space.shape[0] + 1],
-            dtype=self.observation_space.dtype)
-
-    def observation(self, observation):
-        return np.concatenate((observation, [self.env._elapsed_steps]))
 
 
 class TransposeObs(gym.ObservationWrapper):

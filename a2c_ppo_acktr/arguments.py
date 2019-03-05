@@ -45,8 +45,6 @@ def get_args():
                         help='save interval, one save per n updates (default: 100)')
     parser.add_argument('--eval-interval', type=int, default=None,
                         help='eval interval, one eval per n updates (default: None)')
-    parser.add_argument('--vis-interval', type=int, default=100,
-                        help='vis interval, one log per n updates (default: 100)')
     parser.add_argument('--num-env-steps', type=int, default=10e6,
                         help='number of environment steps to train (default: 10e6)')
     parser.add_argument('--env-name', default='PongNoFrameskip-v4',
@@ -57,8 +55,8 @@ def get_args():
                         help='directory to save agent logs (default: ./trained_models/)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
-    parser.add_argument('--add-timestep', action='store_true', default=False,
-                        help='add timestep to observations')
+    parser.add_argument('--use-proper-time-limits', action='store_true', default=False,
+                        help='compute returns taking into account time limits')
     parser.add_argument('--recurrent-policy', action='store_true', default=False,
                         help='use a recurrent policy')
     parser.add_argument('--use-linear-lr-decay', action='store_true', default=False,

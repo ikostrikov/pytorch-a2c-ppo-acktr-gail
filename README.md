@@ -38,7 +38,6 @@ To use the DeepMind Control Suite environments, set the flag `--env-name dm.<dom
 
 * Python 3 (it might work with Python 2, but I didn't test it)
 * [PyTorch](http://pytorch.org/)
-* [Visdom](https://github.com/facebookresearch/visdom)
 * [OpenAI baselines](https://github.com/openai/baselines)
 
 In order to install requirements, follow:
@@ -70,11 +69,13 @@ It's extremely difficult to reproduce results for Reinforcement Learning methods
 * Improve this README file. Rearrange images.
 * Improve performance of KFAC, see kfac.py for more information
 * Run evaluation for all games and algorithms
-* Properly handle masking for continuing tasks, don't mask if ended because of max steps (see https://github.com/sfujim/TD3/blob/master/main.py#L123)
+
+## Visualization
+
+In order to visualize the results use ```visualize.ipynb```.
+
 
 ## Training
-
-Start a `Visdom` server with `python -m visdom.server`, it will serve `http://localhost:8097/` by default.
 
 ### Atari
 #### A2C
@@ -86,7 +87,7 @@ python main.py --env-name "PongNoFrameskip-v4"
 #### PPO
 
 ```bash
-python main.py --env-name "PongNoFrameskip-v4" --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 0.5 --num-processes 8 --num-steps 128 --num-mini-batch 4 --vis-interval 1 --log-interval 1 --use-linear-lr-decay --use-linear-clip-decay --entropy-coef 0.01
+python main.py --env-name "PongNoFrameskip-v4" --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 0.5 --num-processes 8 --num-steps 128 --num-mini-batch 4 --log-interval 1 --use-linear-lr-decay --use-linear-clip-decay --entropy-coef 0.01
 ```
 
 #### ACKTR
@@ -97,7 +98,7 @@ python main.py --env-name "PongNoFrameskip-v4" --algo acktr --num-processes 32 -
 
 ### MuJoCo
 
-I **highly** recommend to use --add-timestep argument with some mujoco environments (for example, Reacher) despite it's not a default option with OpenAI implementations.
+Please always try to use  ```--use-proper-time-limits``` flag. It properly handles partial trajectories (see https://github.com/sfujim/TD3/blob/master/main.py#L123).
 
 #### A2C
 
@@ -108,7 +109,7 @@ python main.py --env-name "Reacher-v2" --num-env-steps 1000000
 #### PPO
 
 ```bash
-python main.py --env-name "Reacher-v2" --algo ppo --use-gae --vis-interval 1  --log-interval 1 --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay
+python main.py --env-name "Reacher-v2" --algo ppo --use-gae --log-interval 1 --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --tau 0.95 --num-env-steps 1000000 --use-linear-lr-decay --use-proper-time-limits
 ```
 
 #### ACKTR
