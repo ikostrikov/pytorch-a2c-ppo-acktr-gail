@@ -21,11 +21,6 @@ from a2c_ppo_acktr.storage import RolloutStorage
 def main():
     args = get_args()
 
-    assert args.algo in ['a2c', 'ppo', 'acktr']
-    if args.recurrent_policy:
-        assert args.algo in ['a2c', 'ppo'], \
-            'Recurrent policy is not implemented for ACKTR'
-
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
 
@@ -91,13 +86,9 @@ def main():
 
         if args.use_linear_lr_decay:
             # decrease learning rate linearly
-            if args.algo == "acktr":
-                # use optimizer's learning rate since it's hard-coded in kfac.py
-                utils.update_linear_schedule(agent.optimizer, j, num_updates,
-                                             agent.optimizer.lr)
-            else:
-                utils.update_linear_schedule(agent.optimizer, j, num_updates,
-                                             args.lr)
+            utils.update_linear_schedule(
+                agent.optimizer, j, num_updates,
+                agent.optimizer.lr if args.algo == "acktr" else args.lr)
 
         if args.algo == 'ppo' and args.use_linear_clip_decay:
             agent.clip_param = args.clip_param * (1 - j / float(num_updates))
@@ -131,7 +122,7 @@ def main():
                 rollouts.masks[-1]).detach()
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma,
-                                 args.tau, args.use_proper_time_limits)
+                                 args.gae_lambda, args.use_proper_time_limits)
 
         value_loss, action_loss, dist_entropy = agent.update(rollouts)
 
@@ -146,22 +137,13 @@ def main():
             except OSError:
                 pass
 
-            # A really ugly way to save a model to CPU
-            save_model = actor_critic
-            if args.cuda:
-                save_model = copy.deepcopy(actor_critic).cpu()
-
-            save_model = [
-                save_model,
+            torch.save([
+                actor_critic,
                 getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
-            ]
-
-            torch.save(save_model,
-                       os.path.join(save_path, args.env_name + ".pt"))
-
-        total_num_steps = (j + 1) * args.num_processes * args.num_steps
+            ], os.path.join(save_path, args.env_name + ".pt"))
 
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
+            total_num_steps = (j + 1) * args.num_processes * args.num_steps
             end = time.time()
             print(
                 "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"

@@ -67,7 +67,7 @@ class RolloutStorage(object):
                         next_value,
                         use_gae,
                         gamma,
-                        tau,
+                        gae_lambda,
                         use_proper_time_limits=True):
         if use_proper_time_limits:
             if use_gae:
@@ -77,7 +77,8 @@ class RolloutStorage(object):
                     delta = self.rewards[step] + gamma * self.value_preds[
                         step + 1] * self.masks[step +
                                                1] - self.value_preds[step]
-                    gae = delta + gamma * tau * self.masks[step + 1] * gae
+                    gae = delta + gamma * gae_lambda * self.masks[step +
+                                                                  1] * gae
                     gae = gae * self.bad_masks[step + 1]
                     self.returns[step] = gae + self.value_preds[step]
             else:
@@ -94,7 +95,8 @@ class RolloutStorage(object):
                     delta = self.rewards[step] + gamma * self.value_preds[
                         step + 1] * self.masks[step +
                                                1] - self.value_preds[step]
-                    gae = delta + gamma * tau * self.masks[step + 1] * gae
+                    gae = delta + gamma * gae_lambda * self.masks[step +
+                                                                  1] * gae
                     self.returns[step] = gae + self.value_preds[step]
             else:
                 self.returns[-1] = next_value

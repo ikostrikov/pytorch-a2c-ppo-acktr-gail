@@ -30,10 +30,10 @@ def get_args():
         default=False,
         help='use generalized advantage estimation')
     parser.add_argument(
-        '--tau',
+        '--gae-lambda',
         type=float,
         default=0.95,
-        help='gae parameter (default: 0.95)')
+        help='gae lambda parameter (default: 0.95)')
     parser.add_argument(
         '--entropy-coef',
         type=float,
@@ -141,5 +141,10 @@ def get_args():
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
+
+    assert args.algo in ['a2c', 'ppo', 'acktr']
+    if args.recurrent_policy:
+        assert args.algo in ['a2c', 'ppo'], \
+            'Recurrent policy is not implemented for ACKTR'
 
     return args
