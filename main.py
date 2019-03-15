@@ -77,10 +77,15 @@ def main():
             envs.observation_space.shape[0] + envs.action_space.shape[0], 100,
             device)
         file_name = os.path.join(
-            args.gail_experts_dir, "trajs_{}.h5".format(
+            args.gail_experts_dir, "trajs_{}.pt".format(
                 args.env_name.split('-')[0].lower()))
-        gail_train_loader, _ = gail.get_expert_traj_loaders(
-            file_name, args.gail_batch_size, num_train_traj=4, subsamp_freq=20)
+
+        gail_train_loader = torch.utils.data.DataLoader(
+            gail.ExpertDataset(
+                file_name, num_trajectories=4, subsample_frequency=20),
+            batch_size=args.gail_batch_size,
+            shuffle=True,
+            drop_last=True)
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
                               envs.observation_space.shape, envs.action_space,

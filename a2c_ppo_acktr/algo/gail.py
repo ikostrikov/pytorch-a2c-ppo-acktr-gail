@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.utils.data
 from torch import autograd
 
 from baselines.common.running_mean_std import RunningMeanStd
@@ -110,59 +111,38 @@ class Discriminator(nn.Module):
             return reward / np.sqrt(self.ret_rms.var[0] + 1e-8)
 
 
-def get_expert_traj_loaders(file_name,
-                            batch_size,
-                            num_train_traj=4,
-                            num_valid_traj=4,
-                            subsamp_freq=20):
-    with h5py.File(file_name, 'r') as f:
-        dataset_size = f['obs_B_T_Do'].shape[0]  # full dataset size
+class ExpertDataset(torch.utils.data.Dataset):
+    def __init__(self, file_name, num_trajectories=4, subsample_frequency=20):
+        all_trajectories = torch.load(file_name)
 
-        states = f['obs_B_T_Do'][:dataset_size, ...][...]
-        actions = f['a_B_T_Da'][:dataset_size, ...][...]
-        rewards = f['r_B_T'][:dataset_size, ...][...]
-        lens = f['len_B'][:dataset_size, ...][...]
+        perm = torch.randperm(all_trajectories['states'].size(0))
+        idx = perm[:num_trajectories]
 
-    # Stack everything together
-    perm = np.random.permutation(np.arange(dataset_size))
-    train_random_idxs = perm[:num_train_traj]
-    valid_random_idxs = perm[num_train_traj:num_train_traj + num_valid_traj]
+        self.trajectories = {}
 
-    start_times = np.random.randint(0, subsamp_freq, size=lens.shape[0])
+        start_idx = torch.randint(
+            0, subsample_frequency, size=(num_trajectories, ))
 
-    def make_tensor(idxs):
-        xs, ys = [], []
-        for i in idxs:
-            l = lens[i]
-            for j in range(start_times[i], l, subsamp_freq):
-                state = states[i, j].reshape(1, -1)
-                action = actions[i, j].reshape(1, -1)
-                xs.append(state)
-                ys.append(action)
-        x = np.concatenate(xs, axis=0)
-        x = torch.from_numpy(x).float()
-        y = np.concatenate(ys, axis=0)
-        y = torch.from_numpy(y).float()
-        return x, y
+        for k, v in all_trajectories.items():
+            data = v[idx]
 
-    train_x, train_y = make_tensor(train_random_idxs)
-    train_dataset = torch.utils.data.TensorDataset(train_x, train_y)
+            if k != 'lengths':
+                samples = []
+                for i in range(num_trajectories):
+                    samples.append(data[i, start_idx[i]::subsample_frequency])
+                self.trajectories[k] = torch.stack(samples)
+            else:
+                self.trajectories[k] = data // subsample_frequency
 
-    valid_x, valid_y = make_tensor(valid_random_idxs)
-    valid_dataset = torch.utils.data.TensorDataset(valid_x, valid_y)
+    def __len__(self):
+        return self.trajectories['lengths'].sum()
 
-    kwargs = {'num_workers': 0}
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        drop_last=True,
-        **kwargs)
-    valid_loader = torch.utils.data.DataLoader(
-        valid_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        drop_last=False,
-        **kwargs)
+    def __getitem__(self, i):
+        traj_idx = 0
 
-    return train_loader, valid_loader
+        while self.trajectories['lengths'][traj_idx] <= i:
+            i -= self.trajectories['lengths'][traj_idx]
+            traj_idx += 1
+
+        return self.trajectories['states'][traj_idx][i], self.trajectories[
+            'actions'][traj_idx][i],
