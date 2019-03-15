@@ -6,6 +6,7 @@ This is a PyTorch implementation of
 * Advantage Actor Critic (A2C), a synchronous deterministic version of [A3C](https://arxiv.org/pdf/1602.01783v1.pdf)
 * Proximal Policy Optimization [PPO](https://arxiv.org/pdf/1707.06347.pdf)
 * Scalable trust-region method for deep reinforcement learning using Kronecker-factored approximation [ACKTR](https://arxiv.org/abs/1708.05144)
+* Generative Adversarial Imitation Learning [GAIL](https://arxiv.org/abs/1606.03476)
 
 Also see the OpenAI posts: [A2C/ACKTR](https://blog.openai.com/baselines-acktr-a2c/) and [PPO](https://blog.openai.com/openai-baselines-ppo/) for more information.
 
