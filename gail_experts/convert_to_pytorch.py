@@ -16,16 +16,6 @@ def main():
         help='input h5 file',
         type=str)
     parser.add_argument(
-        '--num-trajectories',
-        default=4,
-        help='number of trajectories to subsample',
-        type=int)
-    parser.add_argument(
-        '--trajectory-subsample',
-        default=20,
-        help='trajectory subsampling rate',
-        type=int)
-    parser.add_argument(
         '--pt-file',
         default=None,
         help='output pt file, by default replaces file extension with pt',
