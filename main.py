@@ -76,7 +76,9 @@ def main():
         discr = gail.Discriminator(
             envs.observation_space.shape[0] + envs.action_space.shape[0], 100,
             device)
-        file_name = os.path.join(args.gail_experts_dir, "trajs_halfcheetah.h5")
+        file_name = os.path.join(
+            args.gail_experts_dir, "trajs_{}.h5".format(
+                args.env_name.split('-')[0].lower()))
         gail_train_loader, _ = gail.get_expert_traj_loaders(
             file_name, args.gail_batch_size, num_train_traj=4, subsamp_freq=20)
 
