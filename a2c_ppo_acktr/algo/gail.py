@@ -1,9 +1,11 @@
+import h5py
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import h5py
 from torch import autograd
+
+from baselines.common.running_mean_std import RunningMeanStd
 
 
 class Discriminator(nn.Module):
@@ -20,6 +22,9 @@ class Discriminator(nn.Module):
         self.trunk.train()
 
         self.optimizer = torch.optim.Adam(self.trunk.parameters())
+
+        self.returns = None
+        self.ret_rms = RunningMeanStd(shape=())
 
     def compute_grad_pen(self,
                          expert_state,
@@ -89,31 +94,41 @@ class Discriminator(nn.Module):
             self.optimizer.step()
         return loss / n
 
-    def predict_reward(self, state, action):
+    def predict_reward(self, state, action, gamma, masks, update_rms=True):
         with torch.no_grad():
             self.eval()
             d = self.trunk(torch.cat([state, action], dim=1))
             s = torch.sigmoid(d)
             reward = s.log() - (1 - s).log()
-            return reward
+            if self.returns is None:
+                self.returns = reward.clone()
+
+            if update_rms:
+                self.returns = self.returns * masks * gamma + reward
+                self.ret_rms.update(self.returns.cpu().numpy())
+
+            return reward / np.sqrt(self.ret_rms.var[0] + 1e-8)
 
 
-def get_expert_traj_loaders(file_name, batch_size, num_train_traj=4, num_valid_traj=4, subsamp_freq=20):
+def get_expert_traj_loaders(file_name,
+                            batch_size,
+                            num_train_traj=4,
+                            num_valid_traj=4,
+                            subsamp_freq=20):
     with h5py.File(file_name, 'r') as f:
-        dataset_size = f['obs_B_T_Do'].shape[0] # full dataset size
+        dataset_size = f['obs_B_T_Do'].shape[0]  # full dataset size
 
-        states = f['obs_B_T_Do'][:dataset_size,...][...]
-        actions = f['a_B_T_Da'][:dataset_size,...][...]
-        rewards = f['r_B_T'][:dataset_size,...][...]
-        lens = f['len_B'][:dataset_size,...][...]
+        states = f['obs_B_T_Do'][:dataset_size, ...][...]
+        actions = f['a_B_T_Da'][:dataset_size, ...][...]
+        rewards = f['r_B_T'][:dataset_size, ...][...]
+        lens = f['len_B'][:dataset_size, ...][...]
 
     # Stack everything together
     perm = np.random.permutation(np.arange(dataset_size))
     train_random_idxs = perm[:num_train_traj]
     valid_random_idxs = perm[num_train_traj:num_train_traj + num_valid_traj]
 
-    start_times = np.random.randint(
-        0, subsamp_freq, size=lens.shape[0])
+    start_times = np.random.randint(0, subsamp_freq, size=lens.shape[0])
 
     def make_tensor(idxs):
         xs, ys = [], []
@@ -138,8 +153,16 @@ def get_expert_traj_loaders(file_name, batch_size, num_train_traj=4, num_valid_t
 
     kwargs = {'num_workers': 0}
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=batch_size, shuffle=True, drop_last=True,  **kwargs)
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        drop_last=True,
+        **kwargs)
     valid_loader = torch.utils.data.DataLoader(
-        valid_dataset, batch_size=batch_size, shuffle=False, drop_last=False, **kwargs)
+        valid_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        drop_last=False,
+        **kwargs)
 
     return train_loader, valid_loader

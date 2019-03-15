@@ -139,7 +139,7 @@ def main():
                 envs.venv.eval()
 
             gail_epoch = args.gail_epoch
-            if j < 0:
+            if j < 10:
                 gail_epoch = 100  # Warm up
             for _ in range(gail_epoch):
                 discr.update(gail_train_loader, rollouts,
@@ -147,7 +147,8 @@ def main():
 
             for step in range(args.num_steps):
                 rollouts.rewards[step] = discr.predict_reward(
-                    rollouts.obs[step], rollouts.actions[step]) / 100
+                    rollouts.obs[step], rollouts.actions[step], args.gamma,
+                    rollouts.masks[step])
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma,
                                  args.gae_lambda, args.use_proper_time_limits)
