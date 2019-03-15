@@ -189,9 +189,9 @@ class VecNormalize(VecNormalize_):
         super(VecNormalize, self).__init__(*args, **kwargs)
         self.training = True
 
-    def _obfilt(self, obs):
+    def _obfilt(self, obs, update=True):
         if self.ob_rms:
-            if self.training:
+            if self.training and update:
                 self.ob_rms.update(obs)
             obs = np.clip((obs - self.ob_rms.mean) /
                           np.sqrt(self.ob_rms.var + self.epsilon),
