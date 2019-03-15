@@ -20,7 +20,7 @@ Please use this bibtex if you want to cite this repository in your publications:
       year = {2018},
       publisher = {GitHub},
       journal = {GitHub repository},
-      howpublished = {\url{https://github.com/ikostrikov/pytorch-a2c-ppo-acktr}},
+      howpublished = {\url{https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail}},
     }
 
 ## Supported (and tested) environments (via [OpenAI Gym](https://gym.openai.com))
