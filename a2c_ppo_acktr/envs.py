@@ -8,10 +8,10 @@ from gym.spaces.box import Box
 from baselines import bench
 from baselines.common.atari_wrappers import make_atari, wrap_deepmind
 from baselines.common.vec_env import VecEnvWrapper
-from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.shmem_vec_env import ShmemVecEnv
-from baselines.common.vec_env.vec_normalize import \
-    VecNormalize as VecNormalize_
+from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
+from baselines.common.vec_env.vec_normalize import VecNormalize as VecNormalize_
+
 
 try:
     import dm_control2gym
@@ -27,7 +27,7 @@ try:
     import pybullet_envs
 except ImportError:
     pass
-
+from my_envs.mujoco import *
 
 def make_env(env_id, seed, rank, log_dir, allow_early_resets):
     def _thunk():
@@ -45,25 +45,22 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
         env.seed(seed + rank)
 
         obs_shape = env.observation_space.shape
-
+        
         if str(env.__class__.__name__).find('TimeLimit') >= 0:
             env = TimeLimitMask(env)
-
+        
         if log_dir is not None:
-            env = bench.Monitor(
-                env,
-                os.path.join(log_dir, str(rank)),
-                allow_early_resets=allow_early_resets)
-
+            env = bench.Monitor(env, os.path.join(log_dir, str(rank)),
+                                allow_early_resets=allow_early_resets)
+            
         if is_atari:
             if len(env.observation_space.shape) == 3:
                 env = wrap_deepmind(env)
         elif len(env.observation_space.shape) == 3:
-            raise NotImplementedError(
-                "CNN models work only for atari,\n"
+            raise NotImplementedError("CNN models work only for atari,\n"
                 "please use a custom wrapper for a custom pixel input env.\n"
                 "See wrap_deepmind for an example.")
-
+        
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
         obs_shape = env.observation_space.shape
         if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
@@ -73,19 +70,10 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
 
     return _thunk
 
-
-def make_vec_envs(env_name,
-                  seed,
-                  num_processes,
-                  gamma,
-                  log_dir,
-                  device,
-                  allow_early_resets,
-                  num_frame_stack=None):
-    envs = [
-        make_env(env_name, seed, i, log_dir, allow_early_resets)
-        for i in range(num_processes)
-    ]
+def make_vec_envs(env_name, seed, num_processes, gamma, log_dir,
+                  device, allow_early_resets, num_frame_stack=None):
+    envs = [make_env(env_name, seed, i, log_dir, allow_early_resets)
+            for i in range(num_processes)]
 
     if len(envs) > 1:
         envs = ShmemVecEnv(envs, context='fork')
@@ -114,12 +102,11 @@ class TimeLimitMask(gym.Wrapper):
         obs, rew, done, info = self.env.step(action)
         if done and self.env._max_episode_steps == self.env._elapsed_steps:
             info['bad_transition'] = True
-
+        
         return obs, rew, done, info
 
     def reset(self, **kwargs):
-        return self.env.reset(**kwargs)
-
+        return self.env.reset(**kwargs) 
 
 # Can be used to test recurrent policies for Reacher-v2
 class MaskGoal(gym.ObservationWrapper):
@@ -143,15 +130,16 @@ class TransposeImage(TransposeObs):
         Transpose observation space for images
         """
         super(TransposeImage, self).__init__(env)
-        assert len(op) == 3, f"Error: Operation, {str(op)}, must be dim3"
+        assert len(op) == 3, "Error: Operation, {}, must be dim3".format(str(op))
         self.op = op
         obs_shape = self.observation_space.shape
         self.observation_space = Box(
             self.observation_space.low[0, 0, 0],
-            self.observation_space.high[0, 0, 0], [
-                obs_shape[self.op[0]], obs_shape[self.op[1]],
-                obs_shape[self.op[2]]
-            ],
+            self.observation_space.high[0, 0, 0],
+            [
+                obs_shape[self.op[0]],
+                obs_shape[self.op[1]],
+                obs_shape[self.op[2]]],
             dtype=self.observation_space.dtype)
 
     def observation(self, ob):
@@ -171,10 +159,7 @@ class VecPyTorch(VecEnvWrapper):
         return obs
 
     def step_async(self, actions):
-        if isinstance(actions, torch.LongTensor):
-            # Squeeze the dimension for discrete actions
-            actions = actions.squeeze(1)
-        actions = actions.cpu().numpy()
+        actions = actions.squeeze(1).cpu().numpy()
         self.venv.step_async(actions)
 
     def step_wait(self):
@@ -185,17 +170,16 @@ class VecPyTorch(VecEnvWrapper):
 
 
 class VecNormalize(VecNormalize_):
+
     def __init__(self, *args, **kwargs):
         super(VecNormalize, self).__init__(*args, **kwargs)
         self.training = True
 
-    def _obfilt(self, obs, update=True):
+    def _obfilt(self, obs):
         if self.ob_rms:
-            if self.training and update:
+            if self.training:
                 self.ob_rms.update(obs)
-            obs = np.clip((obs - self.ob_rms.mean) /
-                          np.sqrt(self.ob_rms.var + self.epsilon),
-                          -self.clipob, self.clipob)
+            obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
             return obs
         else:
             return obs
@@ -222,8 +206,7 @@ class VecPyTorchFrameStack(VecEnvWrapper):
 
         if device is None:
             device = torch.device('cpu')
-        self.stacked_obs = torch.zeros((venv.num_envs, ) +
-                                       low.shape).to(device)
+        self.stacked_obs = torch.zeros((venv.num_envs,) + low.shape).to(device)
 
         observation_space = gym.spaces.Box(
             low=low, high=high, dtype=venv.observation_space.dtype)
