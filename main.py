@@ -108,9 +108,6 @@ def main():
                 agent.optimizer, j, num_updates,
                 agent.optimizer.lr if args.algo == "acktr" else args.lr)
 
-        if args.algo == 'ppo' and args.use_linear_clip_decay:
-            agent.clip_param = args.clip_param * (1 - j / float(num_updates))
-
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
