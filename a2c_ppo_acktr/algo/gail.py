@@ -119,9 +119,11 @@ class ExpertDataset(torch.utils.data.Dataset):
         idx = perm[:num_trajectories]
 
         self.trajectories = {}
-
+        
+        # See https://github.com/pytorch/pytorch/issues/14886
+        # .long() for fixing bug in torch v0.4.1
         start_idx = torch.randint(
-            0, subsample_frequency, size=(num_trajectories, ))
+            0, subsample_frequency, size=(num_trajectories, )).long()
 
         for k, v in all_trajectories.items():
             data = v[idx]
