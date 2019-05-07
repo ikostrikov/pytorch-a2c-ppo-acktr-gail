@@ -125,7 +125,7 @@ class TimeLimitMask(gym.Wrapper):
 class MaskGoal(gym.ObservationWrapper):
     def observation(self, observation):
         if self.env._elapsed_steps > 0:
-            observation[-2:0] = 0
+            observation[-2:] = 0
         return observation
 
 
