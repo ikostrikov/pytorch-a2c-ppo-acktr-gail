@@ -1,15 +1,15 @@
-import copy
-import glob
+try:
+    from comet_ml import Experiment
+    comet_loaded = True
+except ImportError:
+    comet_loaded = False
+
 import os
 import time
 from collections import deque
 
-import gym
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 
 from a2c_ppo_acktr import algo, utils
 from a2c_ppo_acktr.algo import gail
@@ -22,6 +22,17 @@ from evaluation import evaluate
 
 def main():
     args = get_args()
+
+    if comet_loaded and len(args.comet) > 0:
+        comet_credentials = args.comet.split("/")
+        experiment = Experiment(
+            api_key=comet_credentials[2],
+            project_name=comet_credentials[1],
+            workspace=comet_credentials[0])
+        for key, value in vars(args).items():
+            experiment.log_parameter(key, value)
+    else:
+        experiment = None
 
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
@@ -39,7 +50,8 @@ def main():
     device = torch.device("cuda:0" if args.cuda else "cpu")
 
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
-                         args.gamma, args.log_dir, device, False, args.custom_gym)
+                         args.gamma, args.log_dir, device, False,
+                         args.custom_gym)
 
     actor_critic = Policy(
         envs.observation_space.shape,
@@ -77,8 +89,8 @@ def main():
             envs.observation_space.shape[0] + envs.action_space.shape[0], 100,
             device)
         file_name = os.path.join(
-            args.gail_experts_dir, "trajs_{}.pt".format(
-                args.env_name.split('-')[0].lower()))
+            args.gail_experts_dir,
+            "trajs_{}.pt".format(args.env_name.split('-')[0].lower()))
 
         gail_train_loader = torch.utils.data.DataLoader(
             gail.ExpertDataset(
@@ -115,12 +127,15 @@ def main():
                     rollouts.obs[step], rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step])
 
-            # Obser reward and next obs
+            # Observe reward and next obs
             obs, reward, done, infos = envs.step(action)
 
-            for info in infos:
+            for idx, info in enumerate(infos):
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])
+                    if experiment is not None:
+                        experiment.log_metric("env_{} reward".format(idx),
+                                              info['episode']['r'])
 
             # If done then clean the history of observations.
             masks = torch.FloatTensor(
@@ -160,8 +175,8 @@ def main():
         rollouts.after_update()
 
         # save for every interval-th episode or for the last epoch
-        if (j % args.save_interval == 0
-                or j == num_updates - 1) and args.save_dir != "":
+        if (j % args.save_interval == 0 or
+                j == num_updates - 1) and args.save_dir != "":
             save_path = os.path.join(args.save_dir, args.algo)
             try:
                 os.makedirs(save_path)
@@ -185,8 +200,8 @@ def main():
                         np.max(episode_rewards), dist_entropy, value_loss,
                         action_loss))
 
-        if (args.eval_interval is not None and len(episode_rewards) > 1
-                and j % args.eval_interval == 0):
+        if (args.eval_interval is not None and len(episode_rewards) > 1 and
+                j % args.eval_interval == 0):
             ob_rms = utils.get_vec_normalize(envs).ob_rms
             evaluate(actor_critic, ob_rms, args.env_name, args.seed,
                      args.num_processes, eval_log_dir, device)

@@ -130,6 +130,10 @@ def get_args():
         default='',
         help='import some dependency package for thew gym env')
     parser.add_argument(
+        '--comet',
+        default='',
+        help='add comet.ml credentials in the format workspace/project/api_key')
+    parser.add_argument(
         '--save-dir',
         default='./trained_models/',
         help='directory to save agent logs (default: ./trained_models/)')
