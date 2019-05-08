@@ -133,9 +133,6 @@ def main():
             for idx, info in enumerate(infos):
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])
-                    if experiment is not None:
-                        experiment.log_metric("env_{} reward".format(idx),
-                                              info['episode']['r'])
 
             # If done then clean the history of observations.
             masks = torch.FloatTensor(
@@ -191,6 +188,13 @@ def main():
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
             end = time.time()
+            if experiment is not None:
+                experiment.log_metric("env_{} reward mean".format(idx),
+                                      np.mean(episode_rewards))
+                experiment.log_metric("env_{} reward min".format(idx),
+                                      np.min(episode_rewards))
+                experiment.log_metric("env_{} reward max".format(idx),
+                                      np.max(episode_rewards))
             print(
                 "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
                 .format(j, total_num_steps,
