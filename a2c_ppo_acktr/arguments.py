@@ -75,7 +75,7 @@ def get_args():
     parser.add_argument(
         '--num-processes',
         type=int,
-        default=16,
+        default=1,
         help='how many training CPU processes to use (default: 16)')
     parser.add_argument(
         '--num-steps',
@@ -125,6 +125,10 @@ def get_args():
         '--log-dir',
         default='/tmp/gym/',
         help='directory to save agent logs (default: /tmp/gym)')
+    parser.add_argument(
+        '--custom-gym',
+        default='',
+        help='import some dependency package for thew gym env')
     parser.add_argument(
         '--save-dir',
         default='./trained_models/',

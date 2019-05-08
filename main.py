@@ -39,7 +39,7 @@ def main():
     device = torch.device("cuda:0" if args.cuda else "cpu")
 
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
-                         args.gamma, args.log_dir, device, False)
+                         args.gamma, args.log_dir, device, False, args.custom_gym)
 
     actor_critic = Policy(
         envs.observation_space.shape,

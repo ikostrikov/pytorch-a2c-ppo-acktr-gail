@@ -1,3 +1,4 @@
+import importlib
 import os
 
 import gym
@@ -29,8 +30,13 @@ except ImportError:
     pass
 
 
-def make_env(env_id, seed, rank, log_dir, allow_early_resets):
+def make_env(env_id, seed, rank, log_dir, allow_early_resets, custom_gym):
     def _thunk():
+        print("CUSTOM GYM:", custom_gym)
+        if custom_gym is not None and custom_gym != "":
+            module = importlib.import_module(custom_gym, package=None)
+            print("imported env '{}'".format((custom_gym)))
+
         if env_id.startswith("dm"):
             _, domain, task = env_id.split('.')
             env = dm_control2gym.make(domain_name=domain, task_name=task)
@@ -80,10 +86,10 @@ def make_vec_envs(env_name,
                   gamma,
                   log_dir,
                   device,
-                  allow_early_resets,
+                  allow_early_resets, custom_gym,
                   num_frame_stack=None):
     envs = [
-        make_env(env_name, seed, i, log_dir, allow_early_resets)
+        make_env(env_name, seed, i, log_dir, allow_early_resets, custom_gym)
         for i in range(num_processes)
     ]
 
