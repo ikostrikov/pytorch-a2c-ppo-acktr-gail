@@ -8,12 +8,19 @@ from a2c_ppo_acktr.utils import init
 
 
 class Flatten(nn.Module):
+
     def forward(self, x):
         return x.view(x.size(0), -1)
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, base=None, base_kwargs=None):
+
+    def __init__(self,
+                 obs_shape,
+                 action_space,
+                 base=None,
+                 base_kwargs=None,
+                 navi=False):
         super(Policy, self).__init__()
         if base_kwargs is None:
             base_kwargs = {}
@@ -29,7 +36,10 @@ class Policy(nn.Module):
 
         if action_space.__class__.__name__ == "Discrete":
             num_outputs = action_space.n
-            self.dist = Categorical(self.base.output_size, num_outputs)
+            net_outputs = self.base.output_size
+            if navi:
+                net_outputs = 768
+            self.dist = Categorical(net_outputs, num_outputs)
         elif action_space.__class__.__name__ == "Box":
             num_outputs = action_space.shape[0]
             self.dist = DiagGaussian(self.base.output_size, num_outputs)
@@ -80,6 +90,7 @@ class Policy(nn.Module):
 
 
 class NNBase(nn.Module):
+
     def __init__(self, recurrent, recurrent_input_size, hidden_size):
         super(NNBase, self).__init__()
 
@@ -151,8 +162,7 @@ class NNBase(nn.Module):
                 end_idx = has_zeros[i + 1]
 
                 rnn_scores, hxs = self.gru(
-                    x[start_idx:end_idx],
-                    hxs * masks[start_idx].view(1, -1, 1))
+                    x[start_idx:end_idx], hxs * masks[start_idx].view(1, -1, 1))
 
                 outputs.append(rnn_scores)
 
@@ -167,6 +177,7 @@ class NNBase(nn.Module):
 
 
 class CNNBase(NNBase):
+
     def __init__(self, num_inputs, recurrent=False, hidden_size=512):
         super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
 
@@ -196,6 +207,7 @@ class CNNBase(NNBase):
 
 
 class MLPBase(NNBase):
+
     def __init__(self, num_inputs, recurrent=False, hidden_size=64):
         super(MLPBase, self).__init__(recurrent, num_inputs, hidden_size)
 
@@ -227,3 +239,49 @@ class MLPBase(NNBase):
         hidden_actor = self.actor(x)
 
         return self.critic_linear(hidden_critic), hidden_actor, rnn_hxs
+
+
+class NaviBase(NNBase):
+
+    def __init__(self,
+                 num_inputs,
+                 recurrent=False,
+                 hidden_size=256,
+                 total_hidden_size=256 * 3):
+        if recurrent:
+            raise NotImplementedError("recurrent policy not done yet")
+        super(NaviBase, self).__init__(recurrent, hidden_size, hidden_size)
+
+        init_cnn = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init
+                                  .constant_(x, 0),
+                                  nn.init.calculate_gain('relu'))
+        init_dense = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                                    constant_(x, 0), np.sqrt(2))
+
+        self.img_embed = nn.Sequential(
+            init_cnn(nn.Conv2d(3, 32, 8, stride=4)), nn.ReLU(),
+            init_cnn(nn.Conv2d(32, 64, 4, stride=2)), nn.ReLU(),
+            init_cnn(nn.Conv2d(64, 32, 3, stride=1)), nn.ReLU(), Flatten(),
+            init_cnn(nn.Linear(32 * 7 * 7, hidden_size)), nn.ReLU())
+
+        self.coord_embed = nn.Sequential(
+            init_dense(nn.Linear(2, 64)), nn.Tanh(),
+            init_dense(nn.Linear(64, hidden_size)), nn.Tanh())
+
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0))
+
+        self.critic_linear = init_(nn.Linear(total_hidden_size, 1))
+
+        self.train()
+
+    def forward(self, inputs, rnn_hxs, masks):
+        image = inputs[:, :3, :, :]
+        goal = inputs[:, 3, 0, :2]
+        offset = inputs[:, 3, 0, 2:4]
+
+        img_e = self.img_embed(image)
+        goal_e = self.coord_embed(goal)
+        offset_e = self.coord_embed(offset)
+        x = torch.cat((img_e, goal_e, offset_e), dim=1)
+        return self.critic_linear(x), x, rnn_hxs

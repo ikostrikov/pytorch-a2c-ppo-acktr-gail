@@ -15,7 +15,7 @@ from a2c_ppo_acktr import algo, utils
 from a2c_ppo_acktr.algo import gail
 from a2c_ppo_acktr.arguments import get_args
 from a2c_ppo_acktr.envs import make_vec_envs
-from a2c_ppo_acktr.model import Policy
+from a2c_ppo_acktr.model import Policy, NaviBase
 from a2c_ppo_acktr.storage import RolloutStorage
 from evaluation import evaluate
 
@@ -51,12 +51,20 @@ def main():
 
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                          args.gamma, args.log_dir, device, False,
-                         args.custom_gym)
+                         args.custom_gym, args.navi)
+
+    base = None
+    obs_shape = envs.observation_space.shape
+    if args.navi:
+        base = NaviBase
 
     actor_critic = Policy(
-        envs.observation_space.shape,
+        obs_shape,
         envs.action_space,
-        base_kwargs={'recurrent': args.recurrent_policy})
+        base_kwargs={'recurrent': args.recurrent_policy},
+        navi=args.navi,
+        base=base
+    )
     actor_critic.to(device)
 
     if args.algo == 'a2c':

@@ -30,7 +30,8 @@ except ImportError:
     pass
 
 
-def make_env(env_id, seed, rank, log_dir, allow_early_resets, custom_gym):
+def make_env(env_id, seed, rank, log_dir, allow_early_resets, custom_gym, navi):
+
     def _thunk():
         print("CUSTOM GYM:", custom_gym)
         if custom_gym is not None and custom_gym != "":
@@ -61,19 +62,20 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, custom_gym):
                 os.path.join(log_dir, str(rank)),
                 allow_early_resets=allow_early_resets)
 
-        if is_atari:
-            if len(env.observation_space.shape) == 3:
-                env = wrap_deepmind(env)
-        elif len(env.observation_space.shape) == 3:
-            raise NotImplementedError(
-                "CNN models work only for atari,\n"
-                "please use a custom wrapper for a custom pixel input env.\n"
-                "See wrap_deepmind for an example.")
+        if not navi:
+            if is_atari:
+                if len(env.observation_space.shape) == 3:
+                    env = wrap_deepmind(env)
+            elif len(env.observation_space.shape) == 3:
+                raise NotImplementedError(
+                    "CNN models work only for atari,\n"
+                    "please use a custom wrapper for a custom pixel input env.\n"
+                    "See wrap_deepmind for an example.")
 
-        # If the input has shape (W,H,3), wrap for PyTorch convolutions
-        obs_shape = env.observation_space.shape
-        if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
-            env = TransposeImage(env, op=[2, 0, 1])
+            # If the input has shape (W,H,3), wrap for PyTorch convolutions
+            obs_shape = env.observation_space.shape
+            if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
+                env = TransposeImage(env, op=[2, 0, 1])
 
         return env
 
@@ -86,11 +88,19 @@ def make_vec_envs(env_name,
                   gamma,
                   log_dir,
                   device,
-                  allow_early_resets, custom_gym,
+                  allow_early_resets,
+                  custom_gym,
+                  navi=False,
                   num_frame_stack=None):
     envs = [
-        make_env(env_name, seed, i, log_dir, allow_early_resets, custom_gym)
-        for i in range(num_processes)
+        make_env(
+            env_name,
+            seed,
+            i,
+            log_dir,
+            allow_early_resets,
+            custom_gym,
+            navi=navi) for i in range(num_processes)
     ]
 
     if len(envs) > 1:
@@ -108,7 +118,7 @@ def make_vec_envs(env_name,
 
     if num_frame_stack is not None:
         envs = VecPyTorchFrameStack(envs, num_frame_stack, device)
-    elif len(envs.observation_space.shape) == 3:
+    elif not navi and len(envs.observation_space.shape) == 3:
         envs = VecPyTorchFrameStack(envs, 4, device)
 
     return envs
@@ -116,6 +126,7 @@ def make_vec_envs(env_name,
 
 # Checks whether done was caused my timit limits or not
 class TimeLimitMask(gym.Wrapper):
+
     def step(self, action):
         obs, rew, done, info = self.env.step(action)
         if done and self.env._max_episode_steps == self.env._elapsed_steps:
@@ -129,6 +140,7 @@ class TimeLimitMask(gym.Wrapper):
 
 # Can be used to test recurrent policies for Reacher-v2
 class MaskGoal(gym.ObservationWrapper):
+
     def observation(self, observation):
         if self.env._elapsed_steps > 0:
             observation[-2:] = 0
@@ -136,6 +148,7 @@ class MaskGoal(gym.ObservationWrapper):
 
 
 class TransposeObs(gym.ObservationWrapper):
+
     def __init__(self, env=None):
         """
         Transpose observation space (base class)
@@ -144,6 +157,7 @@ class TransposeObs(gym.ObservationWrapper):
 
 
 class TransposeImage(TransposeObs):
+
     def __init__(self, env=None, op=[2, 0, 1]):
         """
         Transpose observation space for images
@@ -165,6 +179,7 @@ class TransposeImage(TransposeObs):
 
 
 class VecPyTorch(VecEnvWrapper):
+
     def __init__(self, venv, device):
         """Return only every `skip`-th frame"""
         super(VecPyTorch, self).__init__(venv)
@@ -191,6 +206,7 @@ class VecPyTorch(VecEnvWrapper):
 
 
 class VecNormalize(VecNormalize_):
+
     def __init__(self, *args, **kwargs):
         super(VecNormalize, self).__init__(*args, **kwargs)
         self.training = True
@@ -200,8 +216,8 @@ class VecNormalize(VecNormalize_):
             if self.training and update:
                 self.ob_rms.update(obs)
             obs = np.clip((obs - self.ob_rms.mean) /
-                          np.sqrt(self.ob_rms.var + self.epsilon),
-                          -self.clipob, self.clipob)
+                          np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob,
+                          self.clipob)
             return obs
         else:
             return obs
@@ -216,6 +232,7 @@ class VecNormalize(VecNormalize_):
 # Derived from
 # https://github.com/openai/baselines/blob/master/baselines/common/vec_env/vec_frame_stack.py
 class VecPyTorchFrameStack(VecEnvWrapper):
+
     def __init__(self, venv, nstack, device=None):
         self.venv = venv
         self.nstack = nstack
@@ -228,8 +245,7 @@ class VecPyTorchFrameStack(VecEnvWrapper):
 
         if device is None:
             device = torch.device('cpu')
-        self.stacked_obs = torch.zeros((venv.num_envs, ) +
-                                       low.shape).to(device)
+        self.stacked_obs = torch.zeros((venv.num_envs,) + low.shape).to(device)
 
         observation_space = gym.spaces.Box(
             low=low, high=high, dtype=venv.observation_space.dtype)
