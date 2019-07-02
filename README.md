@@ -78,6 +78,15 @@ In order to visualize the results use ```visualize.ipynb```.
 
 ## Training
 
+### Navi
+
+#### PPO
+
+```bash
+python main.py --env-name "Dummy-Stateful-v0" --custom-gym a2c_ppo_acktr --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 0.5 --num-processes 1 --num-steps 128 --num-mini-batch 4 --log-interval 1 --use-linear-lr-decay --entropy-coef 0.01 --comet fgolemo/navi/XXXXXXXXXXXXXXXXXXXXXXXXX --navi
+```
+
+
 ### Atari
 #### A2C
 
