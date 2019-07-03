@@ -116,10 +116,12 @@ def main():
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=10)
+    episode_length = deque(maxlen=10)
+    episode_success = 0
+    episode_total = 0
 
     start = time.time()
-    num_updates = int(
-        args.num_env_steps) // args.num_steps // args.num_processes
+    num_updates = int(args.num_env_steps) // args.num_steps // args.num_processes
     for j in range(num_updates):
 
         if args.use_linear_lr_decay:
@@ -128,6 +130,7 @@ def main():
                 agent.optimizer, j, num_updates,
                 agent.optimizer.lr if args.algo == "acktr" else args.lr)
 
+        print("args.num_steps: " + str(args.num_steps))
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
@@ -137,10 +140,12 @@ def main():
 
             # Observe reward and next obs
             obs, reward, done, infos = envs.step(action)
-
             for idx, info in enumerate(infos):
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])
+                    episode_length.append(info['episode']['l'])
+                    episode_success += info['was_successful_trajectory']
+                    episode_total += 1
 
             # If done then clean the history of observations.
             masks = torch.FloatTensor(
@@ -197,12 +202,14 @@ def main():
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
             end = time.time()
             if experiment is not None:
-                experiment.log_metric("env_{} reward mean".format(idx),
-                                      np.mean(episode_rewards))
-                experiment.log_metric("env_{} reward min".format(idx),
-                                      np.min(episode_rewards))
-                experiment.log_metric("env_{} reward max".format(idx),
-                                      np.max(episode_rewards))
+                experiment.log_metric("Reward Mean", np.mean(episode_rewards), step=total_num_steps)
+                experiment.log_metric("Reward Min", np.min(episode_rewards), step=total_num_steps)
+                experiment.log_metric("Reward Max", np.max(episode_rewards), step=total_num_steps)
+                experiment.log_metric("Episode Length Mean ", np.mean(episode_length), step=total_num_steps)
+                experiment.log_metric("Episode Length Min", np.min(episode_length), step=total_num_steps)
+                experiment.log_metric("Episode Length Max", np.max(episode_length), step=total_num_steps)
+                experiment.log_metric("# Trajectories (Total)", j, step=total_num_steps)
+                experiment.log_metric("Episodic Success Rate", episode_success / episode_total, step=total_num_steps)
             print(
                 "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
                 .format(j, total_num_steps,

@@ -279,9 +279,12 @@ class NaviBase(NNBase):
         image = inputs[:, :3, :, :]
         goal = inputs[:, 3, 0, :2]
         offset = inputs[:, 3, 0, 2:4]
+        street_names = inputs[:, 3, 0, 4:10]
+        house_numbers = np.concatenate([inputs[:, 3, 0, 10:84], inputs[:, 3, 1, :46]], axis=1)
 
         img_e = self.img_embed(image)
         goal_e = self.coord_embed(goal)
         offset_e = self.coord_embed(offset)
+
         x = torch.cat((img_e, goal_e, offset_e), dim=1)
         return self.critic_linear(x), x, rnn_hxs
