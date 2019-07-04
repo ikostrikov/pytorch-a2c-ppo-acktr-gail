@@ -52,18 +52,22 @@ def main():
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                          args.gamma, args.log_dir, device, False,
                          args.custom_gym, args.navi)
-
     base = None
     obs_shape = envs.observation_space.shape
     if args.navi:
         base = NaviBase
 
+    if args.num_processes > 1:
+        num_streets = envs.venv.num_streets
+    else:
+        num_streets = envs.venv.envs[0].num_streets
+
     actor_critic = Policy(
         obs_shape,
         envs.action_space,
-        base_kwargs={'recurrent': args.recurrent_policy},
+        base_kwargs={'recurrent': args.recurrent_policy, "num_streets": num_streets},
         navi=args.navi,
-        base=base
+        base=base,
     )
     actor_critic.to(device)
 

@@ -33,12 +33,11 @@ class Policy(nn.Module):
                 raise NotImplementedError
 
         self.base = base(obs_shape[0], **base_kwargs)
-
         if action_space.__class__.__name__ == "Discrete":
             num_outputs = action_space.n
             net_outputs = self.base.output_size
             if navi:
-                net_outputs = 1054
+                net_outputs = 798
             self.dist = Categorical(net_outputs, num_outputs)
         elif action_space.__class__.__name__ == "Box":
             num_outputs = action_space.shape[0]
@@ -246,12 +245,14 @@ class NaviBase(NNBase):
     def __init__(self,
                  num_inputs,
                  recurrent=False,
+                 num_streets=4,
                  hidden_size=256,
-                 total_hidden_size=(256 * 4)+30):
+                 total_hidden_size=(256 * 3) + 30
+                 ):
         if recurrent:
             raise NotImplementedError("recurrent policy not done yet")
         super(NaviBase, self).__init__(recurrent, hidden_size, hidden_size)
-
+        self.num_streets = num_streets
         init_cnn = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init
                                   .constant_(x, 0),
                                   nn.init.calculate_gain('relu'))
@@ -272,7 +273,7 @@ class NaviBase(NNBase):
             init_dense(nn.Linear(10, 16)), nn.Tanh())
 
         self.street_embed = nn.Sequential(
-            init_dense(nn.Linear(3, 10)), nn.Tanh())
+            init_dense(nn.Linear(self.num_streets, 10)), nn.Tanh())
 
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0))
@@ -284,34 +285,39 @@ class NaviBase(NNBase):
     def forward(self, inputs, rnn_hxs, masks):
         image = inputs[:, :3, :, :]
         goal = inputs[:, 3, 0, :2]
-        offset = inputs[:, 3, 0, 2:4]
-        vis_street_names = inputs[:, 3, 0, 4:10]
-        vis_house_numbers = torch.cat([inputs[:, 3, 0, 10:84], inputs[:, 3, 1, :46]], dim=1)
-        goal_house_numbers = inputs[:, 3, 2, :40]
-        goal_street_name = inputs[:, 3, 2, 40:43]
+
+        vis_street_names = inputs[:, 3, 1, :2 * self.num_streets]
+        vis_house_numbers = torch.cat([inputs[:, 3, 2, :84], inputs[:, 3, 3, :36]], dim=1)
+        goal_house_numbers = inputs[:, 3, 4, :40]
+        goal_street_name = inputs[:, 3, 4, 40:40 + self.num_streets]
 
         img_e = self.img_embed(image)
         goal_e = self.coord_embed(goal)
-        offset_e = self.coord_embed(offset)
 
-        goal_hn_e = torch.tensor([]).cuda()
+        goal_hn_e = torch.tensor([])
+        vis_hn_e = torch.tensor([])
+        vis_sn_e = torch.tensor([])
+
+        if torch.cuda.is_available():
+            goal_hn_e = goal_hn_e.cuda()
+            vis_hn_e = vis_hn_e.cuda()
+            vis_sn_e = vis_sn_e.cuda()
+
         for i in range(4):
             goal_hn_embed = self.number_embed(goal_house_numbers[:, i*10:(i+1)*10])
             goal_hn_e = torch.cat((goal_hn_e, goal_hn_embed), dim=1)
 
         goal_sn_e = self.street_embed(goal_street_name)
 
-        vis_hn_e = torch.tensor([]).cuda()
         for j in range(3):
             offset = j*40
             for i in range(4):
                 vis_hn_embed = self.number_embed(vis_house_numbers[:, offset+(i*10):offset+((i+1)*10)])
                 vis_hn_e = torch.cat((vis_hn_e, vis_hn_embed), dim=1)
 
-        vis_sn_e = torch.tensor([]).cuda()
         for i in range(2):
-            vis_sn_embed = self.street_embed(vis_street_names[:, i*3:(i+1)*3])
+            vis_sn_embed = self.street_embed(vis_street_names[:, i*self.num_streets:(i+1)*self.num_streets])
             vis_sn_e = torch.cat((vis_sn_e, vis_sn_embed), dim=1)
 
-        x = torch.cat((img_e, goal_e, offset_e, goal_hn_e, goal_sn_e, vis_hn_e, vis_sn_e), dim=1)
+        x = torch.cat((img_e, goal_e, goal_hn_e, goal_sn_e, vis_hn_e, vis_sn_e), dim=1)
         return self.critic_linear(x), x, rnn_hxs
