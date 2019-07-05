@@ -87,6 +87,38 @@ class Policy(nn.Module):
 
         return value, action_log_probs, dist_entropy, rnn_hxs
 
+class RandomPolicy(Policy):
+
+    def __init__(self,
+                 obs_shape,
+                 action_space,
+                 base=None,
+                 base_kwargs=None,
+                 navi=False):
+        super(RandomPolicy, self).__init__(obs_shape, action_space, base, base_kwargs, navi)
+        self.action_space = action_space
+
+    @property
+    def is_recurrent(self):
+        pass
+
+    @property
+    def recurrent_hidden_state_size(self):
+        return torch.tensor(10)
+
+    def forward(self, inputs, rnn_hxs, masks):
+        pass
+
+    def act(self, inputs, rnn_hxs, masks, deterministic=False):
+        return torch.tensor([10]), torch.tensor([[np.random.choice(self.action_space.n)]]), torch.tensor([1]), torch.tensor([range(10)])
+
+    def get_value(self, inputs, rnn_hxs, masks):
+        return torch.tensor(-1)
+
+    def evaluate_actions(self, inputs, rnn_hxs, masks, action):
+        return None
+
+
 
 class NNBase(nn.Module):
 

@@ -15,7 +15,7 @@ from a2c_ppo_acktr import algo, utils
 from a2c_ppo_acktr.algo import gail
 from a2c_ppo_acktr.arguments import get_args
 from a2c_ppo_acktr.envs import make_vec_envs
-from a2c_ppo_acktr.model import Policy, NaviBase
+from a2c_ppo_acktr.model import Policy, RandomPolicy, NaviBase
 from a2c_ppo_acktr.storage import RolloutStorage
 from evaluation import evaluate
 
@@ -54,8 +54,6 @@ def main():
                          args.custom_gym, args.navi)
     base = None
     obs_shape = envs.observation_space.shape
-    if args.navi:
-        base = NaviBase
 
     actor_critic = Policy(
         obs_shape,
@@ -65,6 +63,9 @@ def main():
         base=base,
     )
     actor_critic.to(device)
+
+    if args.navi:
+        base = NaviBase
 
     if args.algo == 'a2c':
         agent = algo.A2C_ACKTR(
@@ -86,6 +87,15 @@ def main():
             lr=args.lr,
             eps=args.eps,
             max_grad_norm=args.max_grad_norm)
+    elif args.algo == 'random':
+        agent = algo.RANDOM_AGENT(actor_critic, args.value_loss_coef, args.entropy_coef, acktr=True)
+
+        actor_critic = RandomPolicy(obs_shape,
+                                    envs.action_space,
+                                    base_kwargs={'recurrent': args.recurrent_policy},
+                                    navi=args.navi,
+                                    base=base,
+                                    )
     elif args.algo == 'acktr':
         agent = algo.A2C_ACKTR(
             actor_critic, args.value_loss_coef, args.entropy_coef, acktr=True)
