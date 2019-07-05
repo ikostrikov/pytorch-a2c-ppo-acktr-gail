@@ -37,7 +37,7 @@ class Policy(nn.Module):
             num_outputs = action_space.n
             net_outputs = self.base.output_size
             if navi:
-                net_outputs = 256*9
+                net_outputs = 256*10
             self.dist = Categorical(net_outputs, num_outputs)
         elif action_space.__class__.__name__ == "Box":
             num_outputs = action_space.shape[0]
@@ -279,7 +279,7 @@ class NaviBase(NNBase):
                  recurrent=False,
                  num_streets=4,
                  hidden_size=256,
-                 total_hidden_size=(256 * 9)
+                 total_hidden_size=(256 * 10)
                  ):
         if recurrent:
             raise NotImplementedError("recurrent policy not done yet")
@@ -319,6 +319,7 @@ class NaviBase(NNBase):
     def forward(self, inputs, rnn_hxs, masks):
         image = inputs[:, :3, :, :]
         goal = inputs[:, 3, 0, :2]
+        offset = inputs[:, 3, 0, 2:4]
 
         vis_street_names = inputs[:, 3, 1, :2 * self.num_streets]
         vis_house_numbers = torch.cat([inputs[:, 3, 2, :84], inputs[:, 3, 3, :36]], dim=1)
@@ -327,6 +328,7 @@ class NaviBase(NNBase):
 
         img_e = self.img_embed(image)
         goal_e = self.coord_embed(goal)
+        offset_e = self.coord_embed(offset)
 
         goal_hn_e = torch.tensor([])
         vis_hn_e = torch.tensor([])
@@ -353,6 +355,5 @@ class NaviBase(NNBase):
             vis_sn_embed = self.street_embed(vis_street_names[:, i*self.num_streets:(i+1)*self.num_streets])
             vis_sn_e = torch.cat((vis_sn_e, vis_sn_embed), dim=1)
 
-        import pdb; pdb.set_trace()
-        x = torch.cat((img_e, goal_e, goal_hn_e, goal_sn_e, vis_hn_e, vis_sn_e), dim=1)
+        x = torch.cat((img_e, goal_e, offset_e, goal_hn_e, goal_sn_e, vis_hn_e, vis_sn_e), dim=1)
         return self.critic_linear(x), x, rnn_hxs
