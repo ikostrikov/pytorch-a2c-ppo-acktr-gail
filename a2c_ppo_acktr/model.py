@@ -37,7 +37,7 @@ class Policy(nn.Module):
             num_outputs = action_space.n
             net_outputs = self.base.output_size
             if navi:
-                net_outputs = 512
+                net_outputs = 256*9
             self.dist = Categorical(net_outputs, num_outputs)
         elif action_space.__class__.__name__ == "Box":
             num_outputs = action_space.shape[0]
@@ -279,7 +279,7 @@ class NaviBase(NNBase):
                  recurrent=False,
                  num_streets=4,
                  hidden_size=256,
-                 total_hidden_size=(256 * 3) + 30
+                 total_hidden_size=(256 * 9)
                  ):
         if recurrent:
             raise NotImplementedError("recurrent policy not done yet")
@@ -297,15 +297,17 @@ class NaviBase(NNBase):
             init_cnn(nn.Conv2d(64, 32, 5, stride=2)), nn.ReLU(), Flatten(),
             init_cnn(nn.Linear(32 * 8 * 8, hidden_size)), nn.ReLU())
 
+        # NeED to look if different activation functions
+
         self.coord_embed = nn.Sequential(
             init_dense(nn.Linear(2, 64)), nn.Tanh(),
             init_dense(nn.Linear(64, hidden_size)), nn.Tanh())
 
         self.number_embed = nn.Sequential(
-            init_dense(nn.Linear(10, 16)), nn.Tanh())
+            init_dense(nn.Linear(10, 64)), nn.Tanh())
 
         self.street_embed = nn.Sequential(
-            init_dense(nn.Linear(self.num_streets, 10)), nn.Tanh())
+            init_dense(nn.Linear(self.num_streets, hidden_size)), nn.Tanh())
 
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0))
@@ -351,5 +353,6 @@ class NaviBase(NNBase):
             vis_sn_embed = self.street_embed(vis_street_names[:, i*self.num_streets:(i+1)*self.num_streets])
             vis_sn_e = torch.cat((vis_sn_e, vis_sn_embed), dim=1)
 
+        import pdb; pdb.set_trace()
         x = torch.cat((img_e, goal_e, goal_hn_e, goal_sn_e, vis_hn_e, vis_sn_e), dim=1)
         return self.critic_linear(x), x, rnn_hxs

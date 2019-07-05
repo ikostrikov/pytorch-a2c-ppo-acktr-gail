@@ -53,6 +53,8 @@ def main():
                          args.gamma, args.log_dir, device, False,
                          args.custom_gym, args.navi)
     base = None
+    if args.navi:
+        base = NaviBase
     obs_shape = envs.observation_space.shape
 
     actor_critic = Policy(
@@ -63,9 +65,6 @@ def main():
         base=base,
     )
     actor_critic.to(device)
-
-    if args.navi:
-        base = NaviBase
 
     if args.algo == 'a2c':
         agent = algo.A2C_ACKTR(
