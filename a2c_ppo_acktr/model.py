@@ -37,7 +37,7 @@ class Policy(nn.Module):
             num_outputs = action_space.n
             net_outputs = self.base.output_size
             if navi:
-                net_outputs = 798
+                net_outputs = 512
             self.dist = Categorical(net_outputs, num_outputs)
         elif action_space.__class__.__name__ == "Box":
             num_outputs = action_space.shape[0]
