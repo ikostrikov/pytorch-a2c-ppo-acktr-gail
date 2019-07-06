@@ -1,12 +1,10 @@
 from comet_ml import API
 import numpy as np
 api = API()
-exp_ids = {"Hyrule-Mini-All-Shaped-v1": "mweiss17/navi-corl-2019/164622b85b0645de8bfbecea9ae249c6"}
+exp_ids = {"Hyrule-Mini-All-Shaped-v1": "mweiss17/navi-corl-2019/164622b85b0645de8bfbecea9ae249c6", "pacman": "mweiss17/navi-corl-2019/40be0457f4174377963abe5da282a944"}
 
 for name, exp_id in exp_ids.items():
-    experiment = api.get()
-    parameters = api.get_experiment_parameters(exp_id)
-    print(parameters)
+    experiment = api.get(exp_id)
     reward_mean = np.array(experiment.metrics_raw["Reward Mean"])
     reward_max = np.array( experiment.metrics_raw["Reward Max"])
     reward_min = np.array(experiment.metrics_raw["Reward Min"])
