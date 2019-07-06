@@ -152,7 +152,8 @@ def main():
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])
                     episode_length.append(info['episode']['l'])
-                    episode_success_rate.append(info['was_successful_trajectory'])
+                    if "Pacman" not in args.env_name:
+                        episode_success_rate.append(info['was_successful_trajectory'])
                     episode_total += 1
 
             # If done then clean the history of observations.
@@ -217,7 +218,8 @@ def main():
                 experiment.log_metric("Episode Length Min", np.min(episode_length), step=total_num_steps)
                 experiment.log_metric("Episode Length Max", np.max(episode_length), step=total_num_steps)
                 experiment.log_metric("# Trajectories (Total)", j, step=total_num_steps)
-                experiment.log_metric("Episodic Success Rate", np.mean(episode_success_rate), step=total_num_steps)
+                if "Pacman" not in args.env_name:
+                    experiment.log_metric("Episodic Success Rate", np.mean(episode_success_rate), step=total_num_steps)
             print(
                 "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
                 .format(j, total_num_steps,
