@@ -4,7 +4,11 @@ api = API()
 exp_ids = {"Hyrule-Mini-All-Shaped-v1": "mweiss17/navi-corl-2019/164622b85b0645de8bfbecea9ae249c6", "pacman": "mweiss17/navi-corl-2019/40be0457f4174377963abe5da282a944"}
 
 for name, exp_id in exp_ids.items():
+    import pdb; pdb.set_trace()
     experiment = api.get(exp_id)
+    for d in experiment.parameters:
+        name = d.get("name", "")
+        print(name)
     reward_mean = np.array(experiment.metrics_raw["Reward Mean"])
     reward_max = np.array( experiment.metrics_raw["Reward Max"])
     reward_min = np.array(experiment.metrics_raw["Reward Min"])
