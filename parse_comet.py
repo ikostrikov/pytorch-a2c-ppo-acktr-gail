@@ -65,6 +65,11 @@ def build_plot_dict(orig_env_name, raw_tuples, final_data, log_ts):
     return final_data
 
 
+def running_mean(x, N):
+    cumsum = np.cumsum(np.insert(x, 0, 0))
+    return (cumsum[N:] - cumsum[:-N]) / float(N)
+
+
 # Training Data
 final_data = {}
 for name, exp_id in exp_ids.items():
@@ -129,7 +134,7 @@ for metric in reported_metrics:
             met_std = np.std(val['data'][1:], axis=0)
 
             plt.fill_between(val['data'][0], met_mean - met_std, met_mean + met_std, alpha=0.1, color=color)
-            plt.plot(val['data'][0], met_mean, color, label=label)
+            plt.plot(running_mean(val['data'][0], 10), running_mean(met_mean, 10), color, label=label)
 
     plt.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
     plt.legend()
