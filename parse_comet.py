@@ -103,9 +103,12 @@ for name, exp_id in oracle_random_ids.items():
     reward_arr = np.array(reward_mean).transpose()
     random_oracle_data[name][reported_metrics[0]] = np.mean(reward_arr[1])
 
-    episodic_success_rate = experiment.metrics_raw[reported_metrics[1]]
-    ep_succes_rate_arr = np.array(episodic_success_rate).transpose()
-    random_oracle_data[name][reported_metrics[1]] = np.mean(ep_succes_rate_arr[1])
+    if "Oracle" in name:
+        random_oracle_data[name][reported_metrics[1]] = 1.0
+    else:
+        episodic_success_rate = experiment.metrics_raw[reported_metrics[1]]
+        ep_succes_rate_arr = np.array(episodic_success_rate).transpose()
+        random_oracle_data[name][reported_metrics[1]] = np.mean(ep_succes_rate_arr[1])
 
     episode_length_mean = experiment.metrics_raw[reported_metrics[2]]
     ep_length_mean_arr = np.array(episode_length_mean).transpose()
@@ -115,15 +118,15 @@ for name, exp_id in oracle_random_ids.items():
 # Plotting Statistics
 for metric in reported_metrics:
     fig = plt.figure()
-    plt.title(metric, fontsize=14)
-    plt.xlabel('Timesteps', fontsize=10)
-    plt.ylabel(metric, fontsize=10)
+    plt.title(metric, fontsize=18)
+    plt.xlabel('Timesteps', fontsize=14)
+    plt.ylabel(metric, fontsize=14)
 
     # Add random and oracle here.
     for name, _ in oracle_random_ids.items():
         color = plot_info[name]['color']
         label = plot_info[name]['plot_name']
-        plt.axhline(y=random_oracle_data[name][metric], color=color, label=label)
+        plt.axhline(y=random_oracle_data[name][metric], color=color, label=label, linestyle='--')
 
     for key, val in final_data.items():
         if metric in key:
@@ -133,11 +136,12 @@ for metric in reported_metrics:
             met_mean = np.mean(val['data'][1:], axis=0)
             met_std = np.std(val['data'][1:], axis=0)
 
-            plt.fill_between(val['data'][0], met_mean - met_std, met_mean + met_std, alpha=0.1, color=color)
+            plt.fill_between(running_mean(val['data'][0], 10), running_mean(met_mean - met_std, 10),
+                             running_mean(met_mean + met_std, 10), alpha=0.1, facecolor=color)
             plt.plot(running_mean(val['data'][0], 10), running_mean(met_mean, 10), color, label=label)
 
     plt.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
-    plt.legend()
+    plt.legend(fontsize=14)
     plt.savefig('plots/'+metric + ".png")
 
 
