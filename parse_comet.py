@@ -22,7 +22,7 @@ exp_ids = {
 
 oracle_random_ids = {
     "Hyrule-Mini-Random-v1": "mweiss17/navi-corl-2019/80b8b611c84242ffa61d08cc3364ba4b",
-    "Hyrule-Mini-Oracle-v1": "mweiss17/navi-corl-2019/80b8b611c84242ffa61d08cc3364ba4b",
+    "Hyrule-Mini-Oracle-v1": "mweiss17/navi-corl-2019/c212813764de4a66994912dae21a8628",
 }
 
 plot_info = {
