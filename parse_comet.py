@@ -20,11 +20,18 @@ exp_ids = {
     "Hyrule-Mini-ImgOnly-Shaped-v1-s7-10p": "mweiss17/navi-corl-2019/5dfab8d58a524ab3a443d1a8d46e9d99",
 }
 
+oracle_random_ids = {
+    "Hyrule-Mini-Random-v1": "mweiss17/navi-corl-2019/80b8b611c84242ffa61d08cc3364ba4b",
+    "Hyrule-Mini-Oracle-v1": "mweiss17/navi-corl-2019/80b8b611c84242ffa61d08cc3364ba4b",
+}
+
 plot_info = {
     "Hyrule-Mini-All-Shaped-v1": {'color': '#22a784', 'plot_name': 'AllObs'},
     "Hyrule-Mini-NoImg-Shaped-v1": {'color': '#fde724', 'plot_name': 'NoImg'},
     "Hyrule-Mini-NoGPS-Shaped-v1": {'color': '#440154', 'plot_name': 'NoGPS'},
     "Hyrule-Mini-ImgOnly-Shaped-v1": {'color': '#29788e', 'plot_name': 'ImgOnly'},
+    "Hyrule-Mini-Random-v1": {'color': '#79d151', 'plot_name': 'Random'},
+    "Hyrule-Mini-Oracle-v1": {'color': '#404387', 'plot_name': 'Oracle'},
 }
 
 reported_metrics = ["Reward Mean", "Episodic Success Rate" , "Episode Length Mean ",]
@@ -58,6 +65,7 @@ def build_plot_dict(orig_env_name, raw_tuples, final_data, log_ts):
     return final_data
 
 
+# Training Data
 final_data = {}
 for name, exp_id in exp_ids.items():
     experiment = api.get(exp_id)
@@ -80,13 +88,37 @@ for name, exp_id in exp_ids.items():
                                  final_data=final_data,
                                  log_ts=logged_timesteps)
 
+# Random-Oracle data
+random_oracle_data = {}
+for name, exp_id in oracle_random_ids.items():
+    random_oracle_data[name] = {}
+    experiment = api.get(exp_id)
 
+    reward_mean = experiment.metrics_raw[reported_metrics[0]]
+    reward_arr = np.array(reward_mean).transpose()
+    random_oracle_data[name][reported_metrics[0]] = np.mean(reward_arr[1])
+
+    episodic_success_rate = experiment.metrics_raw[reported_metrics[1]]
+    ep_succes_rate_arr = np.array(episodic_success_rate).transpose()
+    random_oracle_data[name][reported_metrics[1]] = np.mean(ep_succes_rate_arr[1])
+
+    episode_length_mean = experiment.metrics_raw[reported_metrics[2]]
+    ep_length_mean_arr = np.array(episode_length_mean).transpose()
+    random_oracle_data[name][reported_metrics[2]] = np.mean(ep_length_mean_arr[1])
+
+
+# Plotting Statistics
 for metric in reported_metrics:
     fig = plt.figure()
-
     plt.title(metric, fontsize=14)
     plt.xlabel('Timesteps', fontsize=10)
     plt.ylabel(metric, fontsize=10)
+
+    # Add random and oracle here.
+    for name, _ in oracle_random_ids.items():
+        color = plot_info[name]['color']
+        label = plot_info[name]['plot_name']
+        plt.axhline(y=random_oracle_data[name][metric], color=color, label=label)
 
     for key, val in final_data.items():
         if metric in key:
@@ -96,11 +128,21 @@ for metric in reported_metrics:
             met_mean = np.mean(val['data'][1:], axis=0)
             met_std = np.std(val['data'][1:], axis=0)
 
-            plt.fill_between(val['data'][0], met_mean - met_std, met_mean + met_std, alpha=0.1,
-                             color=color)
+            plt.fill_between(val['data'][0], met_mean - met_std, met_mean + met_std, alpha=0.1, color=color)
             plt.plot(val['data'][0], met_mean, color, label=label)
 
     plt.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
     plt.legend()
-    plt.savefig(metric + ".png")
+    plt.savefig('plots/'+metric + ".png")
 
+
+# Summary Statistics
+for key, val in final_data.items():
+    print(key)
+    if val['metric'] == reported_metrics[0]:
+        print("Reward Mean. Mean of the last 10 log intervals:", np.mean(np.mean(val['data'][1:], axis=0)[-10:]))
+    elif val['metric'] == reported_metrics[1]:
+        print("Success Rate. Mean of max success rates:", np.mean(np.max(val['data'][1:, -100:], axis=1)))
+    elif val['metric'] == reported_metrics[2]:
+        print("Episode Length Mean. Mean of the last 10 log intervals:", np.mean(np.mean(val['data'][1:], axis=0)[-10:]))
+    print("------------------------------------------------------------------------------------------------")
