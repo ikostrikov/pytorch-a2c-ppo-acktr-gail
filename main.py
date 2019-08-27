@@ -25,6 +25,8 @@ def main():
 
     if comet_loaded and len(args.comet) > 0:
         comet_credentials = args.comet.split("/")
+        print (f"starting experiment in workspace '{comet_credentials[0]}'"
+               f" in project '{comet_credentials[1]}' with api key '{comet_credentials[2]}'")
         experiment = Experiment(
             api_key=comet_credentials[2],
             project_name=comet_credentials[1],
@@ -138,7 +140,6 @@ def main():
                 agent.optimizer, j, num_updates,
                 agent.optimizer.lr if args.algo == "acktr" else args.lr)
 
-        print("args.num_steps: " + str(args.num_steps))
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
@@ -152,7 +153,7 @@ def main():
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])
                     episode_length.append(info['episode']['l'])
-                    if "Pacman" not in args.env_name:
+                    if args.navi and "Pacman" not in args.env_name:
                         episode_success_rate.append(info['was_successful_trajectory'])
                     episode_total += 1
 
