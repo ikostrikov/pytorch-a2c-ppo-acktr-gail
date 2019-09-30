@@ -31,6 +31,7 @@ def main():
             api_key=comet_credentials[2],
             project_name=comet_credentials[1],
             workspace=comet_credentials[0])
+        experiment.set_name("ppo")
         for key, value in vars(args).items():
             experiment.log_parameter(key, value)
     else:
@@ -212,15 +213,17 @@ def main():
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
             end = time.time()
             if experiment is not None:
-                experiment.log_metric("Reward Mean", np.mean(episode_rewards), step=total_num_steps)
-                experiment.log_metric("Reward Min", np.min(episode_rewards), step=total_num_steps)
-                experiment.log_metric("Reward Max", np.max(episode_rewards), step=total_num_steps)
-                experiment.log_metric("Episode Length Mean ", np.mean(episode_length), step=total_num_steps)
-                experiment.log_metric("Episode Length Min", np.min(episode_length), step=total_num_steps)
-                experiment.log_metric("Episode Length Max", np.max(episode_length), step=total_num_steps)
-                experiment.log_metric("# Trajectories (Total)", j, step=total_num_steps)
-                if "Pacman" not in args.env_name:
-                    experiment.log_metric("Episodic Success Rate", np.mean(episode_success_rate), step=total_num_steps)
+                experiment.log_metric("reward", np.mean(episode_rewards))
+                experiment.log_metric("frame", total_num_steps)
+                # experiment.log_metric("Reward Mean", np.mean(episode_rewards), step=total_num_steps)
+                # experiment.log_metric("Reward Min", np.min(episode_rewards), step=total_num_steps)
+                # experiment.log_metric("Reward Max", np.max(episode_rewards), step=total_num_steps)
+                # experiment.log_metric("Episode Length Mean ", np.mean(episode_length), step=total_num_steps)
+                # experiment.log_metric("Episode Length Min", np.min(episode_length), step=total_num_steps)
+                # experiment.log_metric("Episode Length Max", np.max(episode_length), step=total_num_steps)
+                # experiment.log_metric("# Trajectories (Total)", j, step=total_num_steps)
+                # if "Pacman" not in args.env_name:
+                #     experiment.log_metric("Episodic Success Rate", np.mean(episode_success_rate), step=total_num_steps)
             print(
                 "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
                 .format(j, total_num_steps,
