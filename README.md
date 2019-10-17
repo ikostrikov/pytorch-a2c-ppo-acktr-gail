@@ -56,6 +56,8 @@ pip install -e .
 pip install -r requirements.txt
 ```
 
+
+
 ## Contributions
 
 Contributions are very welcome. If you know how to make this code better, please open an issue. If you want to submit a pull request, please open an issue first. Also see a todo list below.
@@ -86,6 +88,15 @@ In order to visualize the results use ```visualize.ipynb```.
 python main.py --env-name "Dummy-Stateful-v0" --custom-gym a2c_ppo_acktr --algo ppo --use-gae --lr 2.5e-4 --clip-param 0.1 --value-loss-coef 0.5 --num-processes 1 --num-steps 128 --num-mini-batch 4 --log-interval 1 --use-linear-lr-decay --entropy-coef 0.01 --comet fgolemo/navi/XXXXXXXXXXXXXXXXXXXXXXXXX --navi
 ```
 
+
+### Gibson
+
+#### PPO
+
+
+```bash
+python main.py --custom-gym "gibson_transfer" --env-name "Gibson-SinglePlayer-Heuristic-Headless-v0" --algo ppo --use-gae --log-interval 1 --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --gae-lambda 0.95 --num-env-steps 1000000 --use-linear-lr-decay --use-proper-time-limits --comet 
+```
 
 ### Atari
 #### A2C

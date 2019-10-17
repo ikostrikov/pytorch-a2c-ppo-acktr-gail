@@ -7,7 +7,7 @@ import torch
 from gym.spaces.box import Box
 
 from baselines import bench
-from baselines.common.atari_wrappers import make_atari, wrap_deepmind
+from baselines.common.atari_wrappers import make_atari, wrap_deepmind, ScaledFloatFrame
 from baselines.common.vec_env import VecEnvWrapper
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.shmem_vec_env import ShmemVecEnv
@@ -28,6 +28,10 @@ try:
     import pybullet_envs
 except ImportError:
     pass
+
+
+def wrap_gibson(env):
+    return ScaledFloatFrame(env)
 
 
 def make_env(env_id, seed, rank, log_dir, allow_early_resets, custom_gym, navi):
@@ -66,6 +70,8 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, custom_gym, navi):
             if is_atari:
                 if len(env.observation_space.shape) == 3:
                     env = wrap_deepmind(env)
+            elif "Gibson" in env_id:
+                env = wrap_gibson(env)
             elif len(env.observation_space.shape) == 3:
                 raise NotImplementedError(
                     "CNN models work only for atari,\n"
