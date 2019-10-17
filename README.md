@@ -95,7 +95,7 @@ python main.py --env-name "Dummy-Stateful-v0" --custom-gym a2c_ppo_acktr --algo 
 
 
 ```bash
-python main.py --custom-gym "gibson_transfer" --env-name "Gibson-SinglePlayer-Heuristic-Headless-v0" --algo ppo --use-gae --log-interval 1 --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --gae-lambda 0.95 --num-env-steps 1000000 --use-linear-lr-decay --use-proper-time-limits --comet 
+python main.py --custom-gym "gibson_transfer" --env-name "Gibson-SinglePlayer-Heuristic-Headless-v0" --algo ppo --use-gae --log-interval 1 --num-steps 2048 --num-processes 1 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --gae-lambda 0.95 --num-env-steps 1000000 --use-linear-lr-decay --use-proper-time-limits --comet fgolemo/gibson1/ZfKpzyaedH6ajYSiKmvaSwyCs --seed 1
 ```
 
 ### Atari

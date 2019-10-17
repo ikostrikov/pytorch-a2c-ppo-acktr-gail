@@ -31,7 +31,9 @@ except ImportError:
 
 
 def wrap_gibson(env):
-    return ScaledFloatFrame(env)
+
+    # return ScaledFloatFrame(env) # nope nope nope, this is done by the cnn
+    return env
 
 
 def make_env(env_id, seed, rank, log_dir, allow_early_resets, custom_gym, navi):
@@ -98,6 +100,7 @@ def make_vec_envs(env_name,
                   custom_gym,
                   navi=False,
                   num_frame_stack=None):
+    print (f"=== Making {num_processes} parallel envs with {num_frame_stack} stacked frames")
     envs = [
         make_env(
             env_name,
@@ -124,6 +127,7 @@ def make_vec_envs(env_name,
 
     if num_frame_stack is not None:
         envs = VecPyTorchFrameStack(envs, num_frame_stack, device)
+    # elif not navi and not "Gibson" in env_name and len(envs.observation_space.shape) == 3:
     elif not navi and len(envs.observation_space.shape) == 3:
         envs = VecPyTorchFrameStack(envs, 4, device)
 

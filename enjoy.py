@@ -24,9 +24,8 @@ parser.add_argument(
     default='PongNoFrameskip-v4',
     help='environment to train on (default: PongNoFrameskip-v4)')
 parser.add_argument(
-    '--load-dir',
-    default='./trained_models/',
-    help='directory to save agent logs (default: ./trained_models/)')
+    '--model',
+    help='path to saved model')
 parser.add_argument(
     '--custom-gym',
     default='hyrule_gym',
@@ -48,7 +47,7 @@ env = make_vec_envs(
     None,
     device='cpu',
     custom_gym=args.custom_gym,
-    navi=True,
+    navi=False,
     allow_early_resets=False)
 
 # Get a render function
@@ -56,7 +55,7 @@ render_func = get_render_func(env)
 
 # We need to use the same statistics for normalization as used in training
 actor_critic, ob_rms = \
-            torch.load(os.path.join(args.load_dir, args.env_name + ".pt"), map_location='cpu')
+            torch.load(args.model, map_location='cpu')
 
 vec_norm = get_vec_normalize(env)
 if vec_norm is not None:
