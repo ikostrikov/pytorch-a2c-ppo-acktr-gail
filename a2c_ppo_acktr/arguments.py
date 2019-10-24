@@ -134,6 +134,10 @@ def get_args():
         default='',
         help='add comet.ml credentials in the format workspace/project/api_key')
     parser.add_argument(
+        '--comet-tags',
+        default='',
+        help='add comet.ml tags to the experiment (comma-separated). Requires --comet flag. Example: ... --comet-tags abc,def,ghi ...')
+    parser.add_argument(
         '--save-dir',
         default='./trained_models/',
         help='directory to save agent logs (default: ./trained_models/)')

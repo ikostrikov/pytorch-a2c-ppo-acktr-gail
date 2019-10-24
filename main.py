@@ -25,8 +25,10 @@ def main():
 
     if comet_loaded and len(args.comet) > 0:
         comet_credentials = args.comet.split("/")
-        print (f"starting experiment in workspace '{comet_credentials[0]}'"
-               f" in project '{comet_credentials[1]}' with api key '{comet_credentials[2]}'")
+        print(
+            f"starting experiment in workspace '{comet_credentials[0]}'"
+            f" in project '{comet_credentials[1]}' with api key '{comet_credentials[2]}'"
+        )
         experiment = Experiment(
             api_key=comet_credentials[2],
             project_name=comet_credentials[1],
@@ -34,6 +36,10 @@ def main():
         experiment.set_name("ppo")
         for key, value in vars(args).items():
             experiment.log_parameter(key, value)
+        if len(args.comet_tags) > 0:
+            comet_tags = args.comet_tags.split(",")
+            for tag in comet_tags:
+                experiment.add_tag(tag)
     else:
         experiment = None
 
@@ -90,14 +96,16 @@ def main():
             eps=args.eps,
             max_grad_norm=args.max_grad_norm)
     elif args.algo == 'random':
-        agent = algo.RANDOM_AGENT(actor_critic, args.value_loss_coef, args.entropy_coef, acktr=True)
+        agent = algo.RANDOM_AGENT(
+            actor_critic, args.value_loss_coef, args.entropy_coef, acktr=True)
 
-        actor_critic = RandomPolicy(obs_shape,
-                                    envs.action_space,
-                                    base_kwargs={'recurrent': args.recurrent_policy},
-                                    navi=args.navi,
-                                    base=base,
-                                    )
+        actor_critic = RandomPolicy(
+            obs_shape,
+            envs.action_space,
+            base_kwargs={'recurrent': args.recurrent_policy},
+            navi=args.navi,
+            base=base,
+        )
     elif args.algo == 'acktr':
         agent = algo.A2C_ACKTR(
             actor_critic, args.value_loss_coef, args.entropy_coef, acktr=True)
@@ -132,7 +140,8 @@ def main():
     episode_total = 0
 
     start = time.time()
-    num_updates = int(args.num_env_steps) // args.num_steps // args.num_processes
+    num_updates = int(
+        args.num_env_steps) // args.num_steps // args.num_processes
     for j in range(num_updates):
 
         if args.use_linear_lr_decay:
@@ -155,7 +164,8 @@ def main():
                     episode_rewards.append(info['episode']['r'])
                     episode_length.append(info['episode']['l'])
                     if args.navi and "Pacman" not in args.env_name:
-                        episode_success_rate.append(info['was_successful_trajectory'])
+                        episode_success_rate.append(
+                            info['was_successful_trajectory'])
                     episode_total += 1
 
             # If done then clean the history of observations.
@@ -213,12 +223,26 @@ def main():
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
             end = time.time()
             if experiment is not None:
-                experiment.log_metric("Reward Mean", np.mean(episode_rewards), step=total_num_steps)
-                experiment.log_metric("Reward Min", np.min(episode_rewards), step=total_num_steps)
-                experiment.log_metric("Reward Max", np.max(episode_rewards), step=total_num_steps)
-                experiment.log_metric("Episode Length Mean ", np.mean(episode_length), step=total_num_steps)
-                experiment.log_metric("Episode Length Min", np.min(episode_length), step=total_num_steps)
-                experiment.log_metric("Episode Length Max", np.max(episode_length), step=total_num_steps)
+                experiment.log_metric(
+                    "Reward Mean",
+                    np.mean(episode_rewards),
+                    step=total_num_steps)
+                experiment.log_metric(
+                    "Reward Min", np.min(episode_rewards), step=total_num_steps)
+                experiment.log_metric(
+                    "Reward Max", np.max(episode_rewards), step=total_num_steps)
+                experiment.log_metric(
+                    "Episode Length Mean ",
+                    np.mean(episode_length),
+                    step=total_num_steps)
+                experiment.log_metric(
+                    "Episode Length Min",
+                    np.min(episode_length),
+                    step=total_num_steps)
+                experiment.log_metric(
+                    "Episode Length Max",
+                    np.max(episode_length),
+                    step=total_num_steps)
                 # experiment.log_metric("# Trajectories (Total)", j, step=total_num_steps)
                 # if "Pacman" not in args.env_name:
                 #     experiment.log_metric("Episodic Success Rate", np.mean(episode_success_rate), step=total_num_steps)
