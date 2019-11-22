@@ -32,6 +32,15 @@ parser.add_argument(
     action='store_true',
     default=False,
     help='whether to use a non-deterministic policy')
+parser.add_argument(
+    '--save-gail-expert',
+    action='store_true',
+    default=False,
+    help='whether to save gail expert trajectory using loaded policy')
+parser.add_argument(
+    '--gail-expert-dir',
+    default='./gail_experts/',
+    help='directory to save gail expert trajectory (default: ./gail_experts/)')
 args = parser.parse_args()
 
 args.det = not args.non_det
@@ -46,7 +55,10 @@ env = make_vec_envs(
     allow_early_resets=False)
 
 # Get a render function
-render_func = get_render_func(env)
+if args.save_gail_expert:
+    render_func = None  # no render
+else:
+    render_func = get_render_func(env)
 
 # We need to use the same statistics for normalization as used in training
 actor_critic, ob_rms = \
@@ -74,22 +86,91 @@ if args.env_name.find('Bullet') > -1:
         if (p.getBodyInfo(i)[0].decode() == "torso"):
             torsoId = i
 
-while True:
-    with torch.no_grad():
-        value, action, _, recurrent_hidden_states = actor_critic.act(
-            obs, recurrent_hidden_states, masks, deterministic=args.det)
+# generate expert trajectory using loaded policy, no rendering
+if args.save_gail_expert:
+    # TODO
+    print('Generating gail expert trajectory')
+    # init placeholders
+    if env.observation_space.__class__.__name__ == 'Discrete':
+        state_dim = env.observation_space.n
+    else:
+        state_dim = env.observation_space.shape[0]
+    if env.action_space.__class__.__name__ == 'Discrete':
+        action_dim = env.action_space.n
+    else:
+        action_dim = env.action_space.shape[0]
 
-    # Obser reward and next obs
-    obs, reward, done, _ = env.step(action)
+    traj_num = 0
+    max_traj_num = 53
 
-    masks.fill_(0.0 if done else 1.0)
+    states = []
+    actions = []
+    rewards = []
+    lengths = []
+    
+    length = 0
+    traj_states = []
+    traj_actions = []
+    traj_rewards = []
 
-    if args.env_name.find('Bullet') > -1:
-        if torsoId > -1:
-            distance = 5
-            yaw = 0
-            humanPos, humanOrn = p.getBasePositionAndOrientation(torsoId)
-            p.resetDebugVisualizerCamera(distance, yaw, -20, humanPos)
+    while traj_num < max_traj_num:
+        traj_states.append(obs)
+        with torch.no_grad():
+            value, action, _, recurrent_hidden_states = actor_critic.act(
+                obs, recurrent_hidden_states, masks, deterministic=args.det)
 
-    if render_func is not None:
-        render_func('human')
+        # Obser reward and next obs
+        obs, reward, done, _ = env.step(action)
+
+        masks.fill_(0.0 if done else 1.0)
+
+        traj_actions.append(action)
+        traj_rewards.append(reward)
+        length += 1
+
+        if done:
+            # store trajectory
+            states.append(torch.cat(traj_states).unsqueeze(0))
+            actions.append(torch.cat(traj_actions).unsqueeze(0))
+            rewards.append(torch.cat(traj_rewards).unsqueeze(0))
+            lengths.append(length)
+
+            # reset buffer
+            length = 0
+            traj_states = []
+            traj_actions = []
+            traj_rewards = []
+
+            traj_num += 1
+
+    # convert to torch
+    states = torch.cat(states)
+    actions = torch.cat(actions)
+    rewards = torch.cat(rewards)
+    lengths = torch.tensor(lengths, dtype=torch.int64)
+
+    # save expert traj
+    torch.save({'states': states, 'actions': actions, 'rewards': rewards, 'lengths': lengths},
+               os.path.join(args.gail_expert_dir, 'trajs_' + args.env_name.split('-')[0].lower() + '.pt'))
+
+# evaluate loaded policy, with rendering
+else:
+    while True:
+        with torch.no_grad():
+            value, action, _, recurrent_hidden_states = actor_critic.act(
+                obs, recurrent_hidden_states, masks, deterministic=args.det)
+
+        # Obser reward and next obs
+        obs, reward, done, _ = env.step(action)
+
+        masks.fill_(0.0 if done else 1.0)
+
+        if args.env_name.find('Bullet') > -1:
+            if torsoId > -1:
+                distance = 5
+                yaw = 0
+                humanPos, humanOrn = p.getBasePositionAndOrientation(torsoId)
+                p.resetDebugVisualizerCamera(distance, yaw, -20, humanPos)
+
+        if render_func is not None:
+            render_func('human')
