@@ -102,3 +102,6 @@ venv.bak/
 
 trained_models/
 .fuse_hidden*
+
+# compressed files
+*.zip
