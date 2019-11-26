@@ -132,7 +132,15 @@ class ExpertDataset(torch.utils.data.Dataset):
                 samples = []
                 for i in range(num_trajectories):
                     samples.append(data[i, start_idx[i]::subsample_frequency])
-                self.trajectories[k] = torch.stack(samples)
+                try:
+                    self.trajectories[k] = torch.stack(samples)
+                except Exception as err:
+                    print('Trying to fix error: ', err)
+                    # import ipdb; ipdb.set_trace()
+                    samples_min_length = min([len(s) for s in samples])
+                    samples = [s[:samples_min_length] for s in samples]
+                    self.trajectories[k] = torch.stack(samples)
+
             else:
                 self.trajectories[k] = data // subsample_frequency
 

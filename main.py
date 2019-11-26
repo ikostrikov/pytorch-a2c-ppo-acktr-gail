@@ -81,7 +81,7 @@ def main():
                 args.env_name.split('-')[0].lower()))
         
         expert_dataset = gail.ExpertDataset(
-            file_name, num_trajectories=4, subsample_frequency=20)
+            file_name, num_trajectories=4, subsample_frequency=20)	# TODO: does not work with Reacher
         drop_last = len(expert_dataset) > args.gail_batch_size
         gail_train_loader = torch.utils.data.DataLoader(
             dataset=expert_dataset,
