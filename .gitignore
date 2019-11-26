@@ -100,8 +100,10 @@ venv.bak/
 # mkdocs documentation
 /site
 
-trained_models/
 .fuse_hidden*
 
 # compressed files
 *.zip
+
+# IDE settings
+.vscode/

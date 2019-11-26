@@ -81,6 +81,7 @@ else:
 # We need to use the same statistics for normalization as used in training
 actor_critic, ob_rms = \
             torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
+actor_critic = actor_critic.cpu()
 
 vec_norm = get_vec_normalize(env)
 if vec_norm is not None:
@@ -106,7 +107,6 @@ if args.env_name.find('Bullet') > -1:
 
 # generate expert trajectory using loaded policy, no rendering
 if args.save_gail_expert:
-    # TODO
     print('Generating gail expert trajectory')
     # init placeholders
     if env.observation_space.__class__.__name__ == 'Discrete':
@@ -151,9 +151,9 @@ if args.save_gail_expert:
 
         if done:
             # store trajectory
-            states.append(torch.cat(traj_states).unsqueeze(0))
-            actions.append(torch.cat(traj_actions).unsqueeze(0))
-            rewards.append(torch.cat(traj_rewards).unsqueeze(0))
+            states.append(torch.cat(traj_states))
+            actions.append(torch.cat(traj_actions))
+            rewards.append(torch.cat(traj_rewards))
             lengths.append(length)
 
             # reset buffer
@@ -166,16 +166,20 @@ if args.save_gail_expert:
             pbar.update(1)
 
     # convert to torch
-    import ipdb; ipdb.set_trace()
-    states = torch.cat(states)
-    actions = torch.cat(actions)
-    rewards = torch.cat(rewards)
-    lengths = torch.tensor(lengths, dtype=torch.int64)
+    states_tensor = torch.zeros(max_traj_num, max(lengths), state_dim)
+    actions_tensor = torch.zeros(max_traj_num, max(lengths), action_dim)
+    rewards_tensor = torch.zeros(max_traj_num, max(lengths))
+    lengths_tensor = torch.tensor(lengths, dtype=torch.int64)
 
     import ipdb; ipdb.set_trace()
+    for i in range(max_traj_num):
+        states_tensor[i, :states[i].shape[0], :] = states[i]
+        actions_tensor[i, :actions[i].shape[0], :] = actions[i]
+        rewards_tensor[i, :rewards[i].shape[0]] = rewards[i].squeeze()
 
+    import ipdb; ipdb.set_trace()
     # save expert traj
-    torch.save({'states': states, 'actions': actions, 'rewards': rewards, 'lengths': lengths},
+    torch.save({'states': states_tensor, 'actions': actions_tensor, 'rewards': rewards_tensor, 'lengths': lengths_tensor},
                os.path.join(args.gail_expert_dir, 'trajs_' + args.env_name.split('-')[0].lower() + '.pt'))
     
     pbar.close()
