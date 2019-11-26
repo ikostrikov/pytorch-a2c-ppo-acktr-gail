@@ -24,6 +24,8 @@ def get_args():
     parser.add_argument(
         '--gail-epoch', type=int, default=5, help='gail epochs (default: 5)')
     parser.add_argument(
+        '--gail-subsample-frequency', type=int, default=20, help='gail expert trajectory subsample frequency (default: 20)')
+    parser.add_argument(
         '--lr', type=float, default=7e-4, help='learning rate (default: 7e-4)')
     parser.add_argument(
         '--eps',

@@ -39,7 +39,13 @@ class Discriminator(nn.Module):
 
         alpha = alpha.expand_as(expert_data).to(expert_data.device)
 
-        mixup_data = alpha * expert_data + (1 - alpha) * policy_data
+        # import ipdb; ipdb.set_trace()
+        # TODO: fix this fucking bug
+        try:
+            mixup_data = alpha * expert_data + (1 - alpha) * policy_data
+        except Exception as err:
+            print('Trying to fix bug: ', err)
+            mixup_data = alpha * expert_data + (1 - alpha) * policy_data[:len(expert_data)]
         mixup_data.requires_grad = True
 
         disc = self.trunk(mixup_data)
