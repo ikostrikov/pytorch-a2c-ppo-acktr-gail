@@ -42,6 +42,11 @@ parser.add_argument(
     '--gail-expert-dir',
     default='./gail_experts/',
     help='directory to save gail expert trajectory (default: ./gail_experts/)')
+parser.add_argument(
+    '--gail-expert-traj-num',
+    type=int,
+    default=53,
+    help='number of gail expert trajectories (default: 53)')
 args = parser.parse_args()
 
 args.det = not args.non_det
@@ -114,7 +119,7 @@ if args.save_gail_expert:
         action_dim = env.action_space.shape[0]
 
     traj_num = 0
-    max_traj_num = 53
+    max_traj_num = args.gail_expert_traj_num
 
     states = []
     actions = []
@@ -161,10 +166,13 @@ if args.save_gail_expert:
             pbar.update(1)
 
     # convert to torch
+    import ipdb; ipdb.set_trace()
     states = torch.cat(states)
     actions = torch.cat(actions)
     rewards = torch.cat(rewards)
     lengths = torch.tensor(lengths, dtype=torch.int64)
+
+    import ipdb; ipdb.set_trace()
 
     # save expert traj
     torch.save({'states': states, 'actions': actions, 'rewards': rewards, 'lengths': lengths},
