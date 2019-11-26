@@ -5,6 +5,7 @@ import sys
 
 import numpy as np
 import torch
+from tqdm import tqdm
 
 from a2c_ppo_acktr.envs import VecPyTorch, make_vec_envs
 from a2c_ppo_acktr.utils import get_render_func, get_vec_normalize
@@ -45,14 +46,26 @@ args = parser.parse_args()
 
 args.det = not args.non_det
 
-env = make_vec_envs(
-    args.env_name,
-    args.seed + 1000,
-    1,
-    None,
-    None,
-    device='cpu',
-    allow_early_resets=False)
+if args.env_name.find('Kuka') > -1 and not args.save_gail_expert:
+    # NOTE: fix Kuka env not rendering bug
+    env = make_vec_envs(
+        args.env_name,
+        args.seed + 1000,
+        1,
+        None,
+        None,
+        device='cpu',
+        allow_early_resets=False,
+        renders=True)
+else:
+    env = make_vec_envs(
+        args.env_name,
+        args.seed + 1000,
+        1,
+        None,
+        None,
+        device='cpu',
+        allow_early_resets=False)
 
 # Get a render function
 if args.save_gail_expert:
@@ -113,6 +126,9 @@ if args.save_gail_expert:
     traj_actions = []
     traj_rewards = []
 
+    # set up pbar
+    pbar = tqdm(total=max_traj_num)
+
     while traj_num < max_traj_num:
         traj_states.append(obs)
         with torch.no_grad():
@@ -142,6 +158,7 @@ if args.save_gail_expert:
             traj_rewards = []
 
             traj_num += 1
+            pbar.update(1)
 
     # convert to torch
     states = torch.cat(states)
@@ -152,6 +169,9 @@ if args.save_gail_expert:
     # save expert traj
     torch.save({'states': states, 'actions': actions, 'rewards': rewards, 'lengths': lengths},
                os.path.join(args.gail_expert_dir, 'trajs_' + args.env_name.split('-')[0].lower() + '.pt'))
+    
+    pbar.close()
+    print('Expert trajectory saved!')
 
 # evaluate loaded policy, with rendering
 else:
