@@ -73,10 +73,10 @@ else:
         allow_early_resets=False)
 
 # Get a render function
-if args.save_gail_expert:
-    render_func = None  # no render
-else:
-    render_func = get_render_func(env)
+# if args.save_gail_expert:
+#     render_func = None  # no render
+# else:
+render_func = get_render_func(env)
 
 # We need to use the same statistics for normalization as used in training
 actor_critic, ob_rms = \
@@ -134,26 +134,34 @@ if args.save_gail_expert:
     # set up pbar
     pbar = tqdm(total=max_traj_num)
 
-    while traj_num < max_traj_num:
+# evaluate loaded policy, with rendering
+while True:
+    if args.save_gail_expert:
         traj_states.append(obs)
-        with torch.no_grad():
-            value, action, _, recurrent_hidden_states = actor_critic.act(
-                obs, recurrent_hidden_states, masks, deterministic=args.det)
+    with torch.no_grad():
+        value, action, _, recurrent_hidden_states = actor_critic.act(
+            obs, recurrent_hidden_states, masks, deterministic=args.det)
 
-        # Obser reward and next obs
-        obs, reward, done, _ = env.step(action)
+    # Obser reward and next obs
+    obs, reward, done, _ = env.step(action)
 
-        masks.fill_(0.0 if done else 1.0)
+    masks.fill_(0.0 if done else 1.0)
 
+    if args.save_gail_expert:
+        # traj_states.append(obs) # TODO
         traj_actions.append(action)
         traj_rewards.append(reward)
         length += 1
 
         if done:
             # store trajectory
-            states.append(torch.cat(traj_states))
-            actions.append(torch.cat(traj_actions))
-            rewards.append(torch.cat(traj_rewards))
+            # states.append(torch.cat(traj_states))
+            # actions.append(torch.cat(traj_actions))
+            # rewards.append(torch.cat(traj_rewards))
+            # lengths.append(length)
+            states.append(torch.cat(traj_states).unsqueeze(0))
+            actions.append(torch.cat(traj_actions).unsqueeze(0))
+            rewards.append(torch.cat(traj_rewards).unsqueeze(0))
             lengths.append(length)
 
             # reset buffer
@@ -164,45 +172,43 @@ if args.save_gail_expert:
 
             traj_num += 1
             pbar.update(1)
+            obs = env.reset()
+        
+        if traj_num >= max_traj_num:
+            break
 
+    if args.env_name.find('Bullet') > -1:
+        if torsoId > -1:
+            distance = 5
+            yaw = 0
+            humanPos, humanOrn = p.getBasePositionAndOrientation(torsoId)
+            p.resetDebugVisualizerCamera(distance, yaw, -20, humanPos)
+
+    if render_func is not None:
+        render_func('human')
+
+if args.save_gail_expert:
     # convert to torch
-    states_tensor = torch.zeros(max_traj_num, max(lengths), state_dim)
-    actions_tensor = torch.zeros(max_traj_num, max(lengths), action_dim)
-    rewards_tensor = torch.zeros(max_traj_num, max(lengths))
+    # states_tensor = torch.zeros(max_traj_num, max(lengths), state_dim)
+    # actions_tensor = torch.zeros(max_traj_num, max(lengths), action_dim)
+    # rewards_tensor = torch.zeros(max_traj_num, max(lengths))
+    # lengths_tensor = torch.tensor(lengths, dtype=torch.int64)
+    states_tensor = torch.cat(states)
+    actions_tensor = torch.cat(actions)
+    rewards_tensor = torch.cat(rewards)
     lengths_tensor = torch.tensor(lengths, dtype=torch.int64)
 
-    import ipdb; ipdb.set_trace()
-    for i in range(max_traj_num):
-        states_tensor[i, :states[i].shape[0], :] = states[i]
-        actions_tensor[i, :actions[i].shape[0], :] = actions[i]
-        rewards_tensor[i, :rewards[i].shape[0]] = rewards[i].squeeze()
+    # import ipdb; ipdb.set_trace()
+    # for i in range(max_traj_num):
+    #     states_tensor[i, :states[i].shape[0], :] = states[i]
+    #     actions_tensor[i, :actions[i].shape[0], :] = actions[i]
+    #     rewards_tensor[i, :rewards[i].shape[0]] = rewards[i].squeeze()
 
-    import ipdb; ipdb.set_trace()
+    # import ipdb; ipdb.set_trace()
     # save expert traj
     torch.save({'states': states_tensor, 'actions': actions_tensor, 'rewards': rewards_tensor, 'lengths': lengths_tensor},
-               os.path.join(args.gail_expert_dir, 'trajs_' + args.env_name.split('-')[0].lower() + '.pt'))
-    
+                os.path.join(args.gail_expert_dir, 'trajs_' + args.env_name.split('-')[0].lower() + '.pt'))
+
     pbar.close()
     print('Expert trajectory saved!')
 
-# evaluate loaded policy, with rendering
-else:
-    while True:
-        with torch.no_grad():
-            value, action, _, recurrent_hidden_states = actor_critic.act(
-                obs, recurrent_hidden_states, masks, deterministic=args.det)
-
-        # Obser reward and next obs
-        obs, reward, done, _ = env.step(action)
-
-        masks.fill_(0.0 if done else 1.0)
-
-        if args.env_name.find('Bullet') > -1:
-            if torsoId > -1:
-                distance = 5
-                yaw = 0
-                humanPos, humanOrn = p.getBasePositionAndOrientation(torsoId)
-                p.resetDebugVisualizerCamera(distance, yaw, -20, humanPos)
-
-        if render_func is not None:
-            render_func('human')
