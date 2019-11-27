@@ -166,6 +166,11 @@ def get_args():
         action='store_true',
         default=False,
         help='use the custom dictionary observation from the navi project')
+    parser.add_argument(
+        '--gibson',
+        action='store_true',
+        default=False,
+        help='use self-play and write policies into the gibson directory')
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

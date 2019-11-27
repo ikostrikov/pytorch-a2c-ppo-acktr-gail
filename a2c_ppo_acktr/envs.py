@@ -1,3 +1,4 @@
+from datetime import datetime
 import importlib
 import os
 
@@ -36,19 +37,33 @@ def wrap_gibson(env):
     return env
 
 
-def make_env(env_id, seed, rank, log_dir, allow_early_resets, custom_gym, navi):
+def make_env(env_id, seed, rank, log_dir, allow_early_resets, custom_gym, navi,
+             gibson):
 
     def _thunk():
         print("CUSTOM GYM:", custom_gym)
-        if custom_gym is not None and custom_gym != "":
+        if custom_gym is not None and custom_gym != "" and not gibson:
             module = importlib.import_module(custom_gym, package=None)
             print("imported env '{}'".format((custom_gym)))
+
+        if gibson:
+            import gibson_transfer
+            from gibson_transfer.self_play_policies import POLICY_DIR
+
+            now = datetime.now()  # current date and time
+
+            subfolder = f"{env_id}-s{seed}-t{now.strftime('%y%m%d_%H%M%S')}"
+            path = os.path.join(POLICY_DIR, subfolder)
+            os.mkdir(path)
 
         if env_id.startswith("dm"):
             _, domain, task = env_id.split('.')
             env = dm_control2gym.make(domain_name=domain, task_name=task)
         else:
             env = gym.make(env_id)
+
+        if gibson:
+            env.unwrapped.subfolder = subfolder
 
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
@@ -99,8 +114,11 @@ def make_vec_envs(env_name,
                   allow_early_resets,
                   custom_gym,
                   navi=False,
+                  gibson=False,
                   num_frame_stack=None):
-    print (f"=== Making {num_processes} parallel envs with {num_frame_stack} stacked frames")
+    print(
+        f"=== Making {num_processes} parallel envs with {num_frame_stack} stacked frames"
+    )
     envs = [
         make_env(
             env_name,
@@ -109,26 +127,34 @@ def make_vec_envs(env_name,
             log_dir,
             allow_early_resets,
             custom_gym,
-            navi=navi) for i in range(num_processes)
+            navi=navi,
+            gibson=gibson) for i in range(num_processes)
     ]
 
     if len(envs) > 1:
+        print("ENV: ShmemVecEnv")
         envs = ShmemVecEnv(envs, context='fork')
     else:
+        print("ENV: DummyVecEnv")
         envs = DummyVecEnv(envs)
 
     if len(envs.observation_space.shape) == 1:
         if gamma is None:
+            print("ENV: VecNormalize, ret = False")
             envs = VecNormalize(envs, ret=False)
         else:
+            print(f"ENV: VecNormalize, gamma = {gamma}")
             envs = VecNormalize(envs, gamma=gamma)
 
+    print(f"ENV: VecPyTorch")
     envs = VecPyTorch(envs, device)
 
     if num_frame_stack is not None:
+        print(f"ENV: VecPyTorchFrameStack, stack: {num_frame_stack}")
         envs = VecPyTorchFrameStack(envs, num_frame_stack, device)
     # elif not navi and not "Gibson" in env_name and len(envs.observation_space.shape) == 3:
     elif not navi and len(envs.observation_space.shape) == 3:
+        print("ENV: VecPyTorchFrameStack, stack: 4")
         envs = VecPyTorchFrameStack(envs, 4, device)
 
     return envs

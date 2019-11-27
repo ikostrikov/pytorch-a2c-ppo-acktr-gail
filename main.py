@@ -1,3 +1,6 @@
+from random import shuffle
+from shutil import copyfile
+
 try:
     from comet_ml import Experiment
     comet_loaded = True
@@ -60,7 +63,8 @@ def main():
 
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                          args.gamma, args.log_dir, device, False,
-                         args.custom_gym, args.navi)
+                         args.custom_gym, args.navi, args.gibson)
+
     base = None
     if args.navi:
         base = NaviBase
@@ -214,10 +218,28 @@ def main():
             except OSError:
                 pass
 
+            source_path = os.path.join(save_path, f"{args.env_name}-s{args.seed}.pt")
             torch.save([
                 actor_critic,
                 getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
-            ], os.path.join(save_path, f"{args.env_name}-s{args.seed}.pt"))
+            ], source_path)
+            if args.gibson:
+                # copy over policy
+
+                # nasty, nasty, first unwrapped is to get to dummyVecEnv, then to source
+                target_path = envs.unwrapped.envs[0].unwrapped.dir
+                # target_path = os.path.basename(os.path.normpath(target_path))
+                print ("PPO: target path",target_path)
+
+                # if it's more than 20 policies, delete one at random
+                policies = [x for x in os.listdir(target_path) if ".pt" in x]
+                if len(policies) > 20:
+                    shuffle(policies)
+                    os.remove(os.path.join(target_path,policies[0]))
+
+                print ("\n\n\n\n\nPPO: WRITING NEW POLICY:",j,"\n\n\n\n\n\n")
+                copyfile(source_path, os.path.join(target_path, f"ep-{j:06}.pt"))
+
 
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
             total_num_steps = (j + 1) * args.num_processes * args.num_steps

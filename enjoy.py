@@ -23,13 +23,9 @@ parser.add_argument(
     '--env-name',
     default='PongNoFrameskip-v4',
     help='environment to train on (default: PongNoFrameskip-v4)')
+parser.add_argument('--model', help='path to saved model')
 parser.add_argument(
-    '--model',
-    help='path to saved model')
-parser.add_argument(
-    '--custom-gym',
-    default='hyrule_gym',
-    help='The gym to load from')
+    '--custom-gym', default='hyrule_gym', help='The gym to load from')
 parser.add_argument(
     '--non-det',
     action='store_true',
@@ -57,16 +53,22 @@ render_func = get_render_func(env)
 actor_critic, ob_rms = \
             torch.load(args.model, map_location='cpu')
 
+print("policy type", type(actor_critic))
+print("ob_rms", type(ob_rms), ob_rms)
+
 vec_norm = get_vec_normalize(env)
 if vec_norm is not None:
     vec_norm.eval()
     vec_norm.ob_rms = ob_rms
 
-recurrent_hidden_states = torch.zeros(1,
-                                      actor_critic.recurrent_hidden_state_size)
+recurrent_hidden_states = \
+    torch.zeros(1, actor_critic.recurrent_hidden_state_size)
+
 masks = torch.zeros(1, 1)
 
 obs = env.reset()
+
+print("obs shape", len(obs), type(obs), obs.size())
 
 if render_func is not None:
     render_func('rgb_array')
