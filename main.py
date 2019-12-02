@@ -63,7 +63,7 @@ def main():
 
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                          args.gamma, args.log_dir, device, False,
-                         args.custom_gym, args.navi, args.gibson)
+                         args.custom_gym, args.navi)
 
     base = None
     if args.navi:
@@ -223,7 +223,7 @@ def main():
                 actor_critic,
                 getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
             ], source_path)
-            if args.gibson:
+            if "gibson" in args.custom_gym:
                 # copy over policy
 
                 # nasty, nasty, first unwrapped is to get to dummyVecEnv, then to source
