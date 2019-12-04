@@ -42,7 +42,8 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, renders):
 
         if 'Fetch' in env_id:
             print('Wrapping Fetch env for compatibility')
-            env = gym.wrappers.FlattenObservation(env)
+            env = gym.wrappers.FilterObservation(env, filter_keys=['observation', 'desired_goal'])
+            env = gym.wrappers.FlattenObservation(env)      # dumb package gym
 
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
