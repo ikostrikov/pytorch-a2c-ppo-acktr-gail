@@ -22,6 +22,11 @@ def get_args():
         default=128,
         help='gail batch size (default: 128)')
     parser.add_argument(
+        '--gail-traj-num',
+        type=int,
+        default=4,
+        help='gail batch size (default: 4)')
+    parser.add_argument(
         '--gail-epoch', type=int, default=5, help='gail epochs (default: 5)')
     parser.add_argument(
         '--gail-subsample-frequency', type=int, default=20, help='gail expert trajectory subsample frequency (default: 20)')

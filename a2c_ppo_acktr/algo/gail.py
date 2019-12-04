@@ -39,8 +39,7 @@ class Discriminator(nn.Module):
 
         alpha = alpha.expand_as(expert_data).to(expert_data.device)
 
-        # import ipdb; ipdb.set_trace()
-        # TODO: fix this fucking bug
+        # fix unmatched size bug
         try:
             mixup_data = alpha * expert_data + (1 - alpha) * policy_data
         except Exception as err:

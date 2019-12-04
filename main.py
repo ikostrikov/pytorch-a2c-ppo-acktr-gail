@@ -81,7 +81,7 @@ def main():
                 args.env_name.split('-')[0].lower()))
         
         expert_dataset = gail.ExpertDataset(
-            file_name, num_trajectories=4, subsample_frequency=args.gail_subsample_frequency)	# NOTE: default 4, 20
+            file_name, num_trajectories=args.gail_traj_num, subsample_frequency=args.gail_subsample_frequency)	# NOTE: default 4, 20
         drop_last = len(expert_dataset) > args.gail_batch_size
         gail_train_loader = torch.utils.data.DataLoader(
             dataset=expert_dataset,
@@ -149,6 +149,7 @@ def main():
                 discr.update(gail_train_loader, rollouts,
                              utils.get_vec_normalize(envs)._obfilt)
 
+            # TODO: maybe introduce HER reward here with some prob?
             for step in range(args.num_steps):
                 rollouts.rewards[step] = discr.predict_reward(
                     rollouts.obs[step], rollouts.actions[step], args.gamma,
