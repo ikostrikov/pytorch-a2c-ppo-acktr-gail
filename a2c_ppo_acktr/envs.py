@@ -47,11 +47,6 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, renders):
             env = gym.wrappers.FilterObservation(env, filter_keys=['observation', 'desired_goal'])
             env = gym.wrappers.FlattenObservation(env)      # dumb package gym
 
-        is_atari = hasattr(gym.envs, 'atari') and isinstance(
-            env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
-        if is_atari:
-            env = make_atari(env_id)
-
         env.seed(seed + rank)
 
         obs_shape = env.observation_space.shape
@@ -64,20 +59,6 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, renders):
                 env,
                 os.path.join(log_dir, str(rank)),
                 allow_early_resets=allow_early_resets)
-
-        if is_atari:
-            if len(env.observation_space.shape) == 3:
-                env = wrap_deepmind(env)
-        elif len(env.observation_space.shape) == 3:
-            raise NotImplementedError(
-                "CNN models work only for atari,\n"
-                "please use a custom wrapper for a custom pixel input env.\n"
-                "See wrap_deepmind for an example.")
-
-        # If the input has shape (W,H,3), wrap for PyTorch convolutions
-        obs_shape = env.observation_space.shape
-        if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
-            env = TransposeImage(env, op=[2, 0, 1])
 
         return env
 
