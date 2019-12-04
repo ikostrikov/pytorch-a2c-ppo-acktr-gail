@@ -135,6 +135,8 @@ def main():
             bad_masks = torch.FloatTensor(
                 [[0.0] if 'bad_transition' in info.keys() else [1.0]
                  for info in infos])
+
+            # TODO: change rollout to store achieved and desired goals
             rollouts.insert(obs, recurrent_hidden_states, action,
                             action_log_prob, value, reward, masks, bad_masks)
 
@@ -215,6 +217,7 @@ def plot_avg_reward(args, avg_reward_list):
     plt.title('Average Reward, Env: {}'.format(env_name))
     plt.xlabel('updates')
     plt.ylabel('average reward')
+    np.save(os.path.join('./imgs', env_name + '_avg_reward.npy'), np.array(avg_reward_list))
     plt.savefig(os.path.join('./imgs', env_name + '_avg_reward.png'))
     plt.show()
 
