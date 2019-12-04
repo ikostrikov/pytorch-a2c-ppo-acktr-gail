@@ -1,3 +1,4 @@
+import os
 import copy
 import glob
 import os
@@ -18,6 +19,8 @@ from a2c_ppo_acktr.envs import make_vec_envs
 from a2c_ppo_acktr.model import Policy
 from a2c_ppo_acktr.storage import RolloutStorage
 from evaluation import evaluate
+
+from matplotlib import pyplot as plt
 
 
 def main():
@@ -98,6 +101,8 @@ def main():
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=10)
+
+    average_reward_list = []    # placeholder for plot
 
     start = time.time()
     num_updates = int(
@@ -187,12 +192,31 @@ def main():
                         np.median(episode_rewards), np.min(episode_rewards),
                         np.max(episode_rewards), dist_entropy, value_loss,
                         action_loss))
+            average_reward_list.append(np.mean(episode_rewards))    # store average reward
 
         if (args.eval_interval is not None and len(episode_rewards) > 1
                 and j % args.eval_interval == 0):
             ob_rms = utils.get_vec_normalize(envs).ob_rms
             evaluate(actor_critic, ob_rms, args.env_name, args.seed,
                      args.num_processes, eval_log_dir, device)
+
+    plot_avg_reward(args, average_reward_list)  # plot
+
+
+def plot_avg_reward(args, avg_reward_list):
+    """
+    Helper function to plot and save average reward over training episodes
+    
+    :param args: arguments from argparse
+    :param avg_reward_list: array like, list of average reward
+    """
+    env_name = args.env_name
+    plt.plot(avg_reward_list)
+    plt.title('Average Reward, Env: {}'.format(env_name))
+    plt.xlabel('updates')
+    plt.ylabel('average reward')
+    plt.savefig(os.path.join('./imgs', env_name + '_avg_reward.png'))
+    plt.show()
 
 
 if __name__ == "__main__":
