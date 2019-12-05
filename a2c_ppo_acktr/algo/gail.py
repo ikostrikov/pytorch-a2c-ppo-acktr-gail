@@ -106,13 +106,13 @@ class Discriminator(nn.Module):
             d = self.trunk(torch.cat([state, action], dim=1))
             s = torch.sigmoid(d)
             # reward = s.log() - (1 - s).log()
-            reward = - (1-s).log() 
-            if self.returns is None:
-                self.returns = reward.clone()
+            reward = - (1-s).log()
+            # if self.returns is None:
+            #     self.returns = reward.clone()
 
-            if update_rms:
-                self.returns = self.returns * masks * gamma + reward
-                self.ret_rms.update(self.returns.cpu().numpy())
+            # if update_rms:
+            #     self.returns = self.returns * masks * gamma + reward
+            #     self.ret_rms.update(self.returns.cpu().numpy())
 
             return reward #/ np.sqrt(self.ret_rms.var[0] + 1e-8)
 
