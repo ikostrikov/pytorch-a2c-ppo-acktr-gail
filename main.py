@@ -74,6 +74,7 @@ def main():
             actor_critic, args.value_loss_coef, args.entropy_coef, acktr=True)
 
     if args.gail:
+        print('***** Using GAIL *****')
         assert len(envs.observation_space.shape) == 1
         discr = gail.Discriminator(
             envs.observation_space.shape[0] + envs.action_space.shape[0], 100,
@@ -106,8 +107,10 @@ def main():
     start = time.time()
     num_updates = int(
         args.num_env_steps) // args.num_steps // args.num_processes
+    
+    reward_dp = 0.5
     for j in range(num_updates):
-
+        reward_dp *= 0.99
         if args.use_linear_lr_decay:
             # decrease learning rate linearly
             utils.update_linear_schedule(
@@ -157,7 +160,7 @@ def main():
 
             # TODO: maybe introduce HER reward here with some prob?
             for step in range(args.num_steps):
-                if np.random.random() < 1:
+                if np.random.random() < reward_dp:
                     rollouts.rewards[step] = discr.predict_reward(
                         rollouts.obs[step], rollouts.actions[step], args.gamma,
                         rollouts.masks[step])
