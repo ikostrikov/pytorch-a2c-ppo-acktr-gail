@@ -157,9 +157,10 @@ def main():
 
             # TODO: maybe introduce HER reward here with some prob?
             for step in range(args.num_steps):
-                rollouts.rewards[step] = discr.predict_reward(
-                    rollouts.obs[step], rollouts.actions[step], args.gamma,
-                    rollouts.masks[step])
+                if np.random.random() < 1:
+                    rollouts.rewards[step] = discr.predict_reward(
+                        rollouts.obs[step], rollouts.actions[step], args.gamma,
+                        rollouts.masks[step])
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma,
                                  args.gae_lambda, args.use_proper_time_limits)
