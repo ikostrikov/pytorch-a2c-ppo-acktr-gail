@@ -108,9 +108,16 @@ def main():
     num_updates = int(
         args.num_env_steps) // args.num_steps // args.num_processes
     
-    reward_dp = 0.5
+    if args.use_rs:
+        reward_dp = 0.5
+        print('Using reward sampling, set reward_dp = {}'.format(reward_dp))
+        if args.use_linear_rs_decay:
+            print('Using linear reward sampling decay')
+    else:
+        reward_dp = 1
     for j in range(num_updates):
-        reward_dp *= 0.99
+        if args.use_rs and args.use_linear_rs_decay:
+            reward_dp *= 0.99
         if args.use_linear_lr_decay:
             # decrease learning rate linearly
             utils.update_linear_schedule(

@@ -40,8 +40,7 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, renders):
             else:
                 env = gym.make(env_id, renders=True)
 
-        # TODO: compatibility with reacher-her-env
-        # TODO: change flatten observation
+        # add compatibility with fetch reacher-her-env
         if 'Fetch' in env_id or 'ReacherHerEnv' in env_id:
             print('Wrapping HER env for compatibility')
             env = gym.wrappers.FilterObservation(env, filter_keys=['observation', 'desired_goal'])

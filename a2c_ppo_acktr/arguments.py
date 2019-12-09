@@ -156,6 +156,16 @@ def get_args():
         action='store_true',
         default=False,
         help='use a linear schedule on the learning rate')
+    parser.add_argument(
+        '--use-rs',
+        action='store_true',
+        default=False,
+        help='use environment reward sampling in GAIL')
+    parser.add_argument(
+        '--use-linear-rs-decay',
+        action='store_true',
+        default=False,
+        help='use a linear reward sampling probablity decay')
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
