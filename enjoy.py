@@ -44,7 +44,7 @@ env = make_vec_envs(
     device='cpu',
     custom_gym=args.custom_gym,
     navi=False,
-    allow_early_resets=False)
+    allow_early_resets=False, enjoy=True)
 
 # Get a render function
 render_func = get_render_func(env)

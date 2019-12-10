@@ -223,7 +223,7 @@ def main():
                 actor_critic,
                 getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
             ], source_path)
-            if "gibson" in args.custom_gym:
+            if "gibson" in args.custom_gym and "TwoPlayer" in args.env_name:
                 # copy over policy
 
                 # nasty, nasty, first unwrapped is to get to dummyVecEnv, then to source
@@ -232,13 +232,13 @@ def main():
                 print ("PPO: target path",target_path)
 
                 # if it's more than 20 policies, delete one at random
-                policies = [x for x in os.listdir(target_path) if ".pt" in x]
+                policies = [x for x in os.listdir(target_path) if "-ppo.pt" in x]
                 if len(policies) > 20:
                     shuffle(policies)
                     os.remove(os.path.join(target_path,policies[0]))
 
                 print ("\n\n\n\n\nPPO: WRITING NEW POLICY:",j,"\n\n\n\n\n\n")
-                copyfile(source_path, os.path.join(target_path, f"ep-{j:06}.pt"))
+                copyfile(source_path, os.path.join(target_path, f"ep-{j:06}-ppo.pt"))
 
 
         if j % args.log_interval == 0 and len(episode_rewards) > 1:

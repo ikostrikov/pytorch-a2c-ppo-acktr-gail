@@ -37,7 +37,14 @@ def wrap_gibson(env):
     return env
 
 
-def make_env(env_id, seed, rank, log_dir, allow_early_resets, custom_gym, navi):
+def make_env(env_id,
+             seed,
+             rank,
+             log_dir,
+             allow_early_resets,
+             custom_gym,
+             navi,
+             enjoy=False):
 
     def _thunk():
         print("CUSTOM GYM:", custom_gym)
@@ -47,13 +54,21 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, custom_gym, navi):
 
         if "gibson" in custom_gym:
             import gibson_transfer
-            from gibson_transfer.self_play_policies import POLICY_DIR
-            now = datetime.now()  # current date and time
 
-            subfolder = f"{env_id}-s{seed}-t{now.strftime('%y%m%d_%H%M%S')}"
-            path = os.path.join(POLICY_DIR, subfolder)
-            os.mkdir(path)
-            print("PPO: using Gibson env with output path:", path)
+            if "TwoPlayer" in env_id:
+                from gibson_transfer.self_play_policies import POLICY_DIR
+
+                if not enjoy:
+                    now = datetime.now()  # current date and time
+
+                    subfolder = f"{env_id}-s{seed}-t{now.strftime('%y%m%d_%H%M%S')}"
+                    path = os.path.join(POLICY_DIR, subfolder)
+                    os.mkdir(path)
+                    print("PPO: using Gibson env with output path:", path)
+                else:
+                    print(
+                        "PPO: using Gibson in playback mode, using main "
+                        "directory for opponent policies: ", POLICY_DIR)
 
         if env_id.startswith("dm"):
             _, domain, task = env_id.split('.')
@@ -61,7 +76,7 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, custom_gym, navi):
         else:
             env = gym.make(env_id)
 
-        if "gibson" in custom_gym:
+        if "gibson" in custom_gym and not enjoy and "TwoPlayer" in env_id:
             env.unwrapped.subfolder = subfolder
 
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
@@ -113,7 +128,8 @@ def make_vec_envs(env_name,
                   allow_early_resets,
                   custom_gym,
                   navi=False,
-                  num_frame_stack=None):
+                  num_frame_stack=None,
+                  enjoy=False):
     print(
         f"=== Making {num_processes} parallel envs with {num_frame_stack} stacked frames"
     )
@@ -125,7 +141,8 @@ def make_vec_envs(env_name,
             log_dir,
             allow_early_resets,
             custom_gym,
-            navi=navi) for i in range(num_processes)
+            navi=navi,
+            enjoy=enjoy) for i in range(num_processes)
     ]
 
     if len(envs) > 1:
