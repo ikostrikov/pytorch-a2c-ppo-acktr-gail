@@ -229,6 +229,7 @@ class CNNBase(NNBase):
         self.train()
 
     def forward(self, inputs, rnn_hxs, masks):
+        # show(make_grid((inputs/255.0).view(4,3,84,84)))
         x = self.main(inputs / 255.0)
 
         if self.is_recurrent:

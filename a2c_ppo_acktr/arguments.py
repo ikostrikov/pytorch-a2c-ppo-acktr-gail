@@ -78,6 +78,11 @@ def get_args():
         default=1,
         help='how many training CPU processes to use (default: 16)')
     parser.add_argument(
+        '--frame-stacc',
+        type=int,
+        default=4,
+        help='how many past frames are kept in memory?')
+    parser.add_argument(
         '--num-steps',
         type=int,
         default=5,

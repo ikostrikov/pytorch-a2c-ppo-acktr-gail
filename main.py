@@ -63,7 +63,7 @@ def main():
 
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                          args.gamma, args.log_dir, device, False,
-                         args.custom_gym, args.navi)
+                         args.custom_gym, args.navi, args.frame_stacc)
 
     base = None
     if args.navi:
