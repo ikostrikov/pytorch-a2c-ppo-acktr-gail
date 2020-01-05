@@ -33,6 +33,39 @@ class Policy(nn.Module):
                 raise NotImplementedError
 
         self.base = base(obs_shape[0], **base_kwargs)
+        # print(self.base.state_dict().keys())
+
+
+
+
+
+
+
+
+
+        ######FIXME TEMPORARY for gibson experiments
+
+        pretrained_dict = torch.load("./single_cube_cnn_ppo-v1.pt", map_location=torch.device('cpu'))
+
+        model_dict = self.base.state_dict()
+        keys = list(pretrained_dict.keys())
+        for key in keys:
+            pretrained_dict[key.replace("cnn", "main")] = pretrained_dict.pop(key)
+        pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+        model_dict.update(pretrained_dict)
+        self.base.load_state_dict(model_dict)
+        print ("=== loaded pretrained CNN ====")
+
+        ######FIXME END
+
+
+
+
+
+
+
+
+
         if action_space.__class__.__name__ == "Discrete":
             num_outputs = action_space.n
             net_outputs = self.base.output_size
