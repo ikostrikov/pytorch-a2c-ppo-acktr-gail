@@ -42,24 +42,24 @@ class Policy(nn.Module):
 
 
 
-
         ######FIXME TEMPORARY for gibson experiments
 
-        pretrained_dict = torch.load("./single_cube_cnn_ppo-v1.pt", map_location=torch.device('cpu'))
+        pretrained_dict = torch.load(
+            "./single_cube_cnn_ppo-v1.pt", map_location=torch.device('cpu'))
 
         model_dict = self.base.state_dict()
         keys = list(pretrained_dict.keys())
         for key in keys:
-            pretrained_dict[key.replace("cnn", "main")] = pretrained_dict.pop(key)
-        pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
-        model_dict.update(pretrained_dict)
+            pretrained_dict[key.replace("cnn",
+                                        "main")] = pretrained_dict.pop(key)
+        pretrained_dict_filtered = {
+            k: v for k, v in pretrained_dict.items() if k in model_dict
+        }
+        model_dict.update(pretrained_dict_filtered)
         self.base.load_state_dict(model_dict)
-        print ("=== loaded pretrained CNN ====")
+        print("=== loaded pretrained CNN ====")
 
         ######FIXME END
-
-
-
 
 
 
@@ -70,11 +70,27 @@ class Policy(nn.Module):
             num_outputs = action_space.n
             net_outputs = self.base.output_size
             if navi:
-                net_outputs = 256*10
+                net_outputs = 256 * 10
             self.dist = Categorical(net_outputs, num_outputs)
         elif action_space.__class__.__name__ == "Box":
             num_outputs = action_space.shape[0]
             self.dist = DiagGaussian(self.base.output_size, num_outputs)
+
+            ######FIXME TEMPORARY for gibson experiments
+
+            model_dict = self.dist.state_dict()
+            pretrained_dict_filtered = {
+                k: v for k, v in pretrained_dict.items() if k in model_dict
+            }
+            model_dict.update(pretrained_dict_filtered)
+            self.dist.load_state_dict(model_dict)
+            print("=== loaded pretrained DiagGauss ====")
+
+            ######FIXME END
+
+
+
+
         elif action_space.__class__.__name__ == "MultiBinary":
             num_outputs = action_space.shape[0]
             self.dist = Bernoulli(self.base.output_size, num_outputs)
@@ -120,6 +136,7 @@ class Policy(nn.Module):
 
         return value, action_log_probs, dist_entropy, rnn_hxs
 
+
 class RandomPolicy(Policy):
 
     def __init__(self,
@@ -128,7 +145,8 @@ class RandomPolicy(Policy):
                  base=None,
                  base_kwargs=None,
                  navi=False):
-        super(RandomPolicy, self).__init__(obs_shape, action_space, base, base_kwargs, navi)
+        super(RandomPolicy, self).__init__(obs_shape, action_space, base,
+                                           base_kwargs, navi)
         self.action_space = action_space
 
     @property
@@ -143,14 +161,15 @@ class RandomPolicy(Policy):
         pass
 
     def act(self, inputs, rnn_hxs, masks, deterministic=False):
-        return torch.tensor([10]), torch.tensor([[np.random.choice(self.action_space.n)]]), torch.tensor([1]), torch.tensor([range(10)])
+        return torch.tensor([10]), torch.tensor([[
+            np.random.choice(self.action_space.n)
+        ]]), torch.tensor([1]), torch.tensor([range(10)])
 
     def get_value(self, inputs, rnn_hxs, masks):
         return torch.tensor(-1)
 
     def evaluate_actions(self, inputs, rnn_hxs, masks, action):
         return None
-
 
 
 class NNBase(nn.Module):
@@ -313,8 +332,7 @@ class NaviBase(NNBase):
                  recurrent=False,
                  num_streets=4,
                  hidden_size=256,
-                 total_hidden_size=(256 * 10)
-                 ):
+                 total_hidden_size=(256 * 10)):
         if recurrent:
             raise NotImplementedError("recurrent policy not done yet")
         super(NaviBase, self).__init__(recurrent, hidden_size, hidden_size)
@@ -356,7 +374,8 @@ class NaviBase(NNBase):
         abs_gps = inputs[:, 3, 0, 2:4]
 
         vis_street_names = inputs[:, 3, 1, :2 * self.num_streets]
-        vis_house_numbers = torch.cat([inputs[:, 3, 2, :84], inputs[:, 3, 3, :36]], dim=1)
+        vis_house_numbers = torch.cat(
+            [inputs[:, 3, 2, :84], inputs[:, 3, 3, :36]], dim=1)
         goal_house_numbers = inputs[:, 3, 4, :40]
         goal_street_name = inputs[:, 3, 4, 40:40 + self.num_streets]
 
@@ -374,20 +393,27 @@ class NaviBase(NNBase):
             vis_sn_e = vis_sn_e.cuda()
 
         for i in range(4):
-            goal_hn_embed = self.number_embed(goal_house_numbers[:, i*10:(i+1)*10])
+            goal_hn_embed = self.number_embed(
+                goal_house_numbers[:, i * 10:(i + 1) * 10])
             goal_hn_e = torch.cat((goal_hn_e, goal_hn_embed), dim=1)
 
         goal_sn_e = self.street_embed(goal_street_name)
 
         for j in range(3):
-            offset = j*40
+            offset = j * 40
             for i in range(4):
-                vis_hn_embed = self.number_embed(vis_house_numbers[:, offset+(i*10):offset+((i+1)*10)])
+                vis_hn_embed = self.number_embed(
+                    vis_house_numbers[:, offset + (i * 10):offset +
+                                      ((i + 1) * 10)])
                 vis_hn_e = torch.cat((vis_hn_e, vis_hn_embed), dim=1)
 
         for i in range(2):
-            vis_sn_embed = self.street_embed(vis_street_names[:, i*self.num_streets:(i+1)*self.num_streets])
+            vis_sn_embed = self.street_embed(
+                vis_street_names[:, i * self.num_streets:(i + 1) *
+                                 self.num_streets])
             vis_sn_e = torch.cat((vis_sn_e, vis_sn_embed), dim=1)
 
-        x = torch.cat((img_e, rel_gps_e, abs_gps_e, goal_hn_e, goal_sn_e, vis_hn_e, vis_sn_e), dim=1)
+        x = torch.cat((img_e, rel_gps_e, abs_gps_e, goal_hn_e, goal_sn_e,
+                       vis_hn_e, vis_sn_e),
+                      dim=1)
         return self.critic_linear(x), x, rnn_hxs
