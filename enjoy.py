@@ -2,6 +2,7 @@ import argparse
 import os
 # workaround to unpickle olf model files
 import sys
+import time
 
 import numpy as np
 import torch
@@ -31,6 +32,11 @@ parser.add_argument(
     action='store_true',
     default=False,
     help='whether to use a non-deterministic policy')
+parser.add_argument(
+    '--frame-stacc',
+    type=int,
+    default=4,
+    help='how many past frames are kept in memory?')
 args = parser.parse_args()
 
 args.det = not args.non_det
@@ -44,7 +50,7 @@ env = make_vec_envs(
     device='cpu',
     custom_gym=args.custom_gym,
     navi=False,
-    allow_early_resets=False, enjoy=True)
+    allow_early_resets=False, enjoy=True, num_frame_stack= args.frame_stacc)
 
 # Get a render function
 render_func = get_render_func(env)
@@ -84,3 +90,5 @@ while True:
 
     if render_func is not None:
         render_func('rgb_array')
+
+    # time.sleep(3)

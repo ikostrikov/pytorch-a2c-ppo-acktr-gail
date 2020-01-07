@@ -57,6 +57,7 @@ class Policy(nn.Module):
         }
         model_dict.update(pretrained_dict_filtered)
         self.base.load_state_dict(model_dict)
+        self.base.train()
         print("=== loaded pretrained CNN ====")
 
         ######FIXME END
@@ -84,6 +85,7 @@ class Policy(nn.Module):
             }
             model_dict.update(pretrained_dict_filtered)
             self.dist.load_state_dict(model_dict)
+            self.dist.train()
             print("=== loaded pretrained DiagGauss ====")
 
             ######FIXME END
