@@ -44,21 +44,21 @@ class Policy(nn.Module):
 
         ######FIXME TEMPORARY for gibson experiments
 
-        pretrained_dict = torch.load(
-            "./single_cube_cnn_ppo-v1.pt", map_location=torch.device('cpu'))
+        # pretrained_dict = torch.load(
+        #     "./single_cube_cnn_ppo-v1.pt", map_location=torch.device('cpu'))
 
-        model_dict = self.base.state_dict()
-        keys = list(pretrained_dict.keys())
-        for key in keys:
-            pretrained_dict[key.replace("cnn",
-                                        "main")] = pretrained_dict.pop(key)
-        pretrained_dict_filtered = {
-            k: v for k, v in pretrained_dict.items() if k in model_dict
-        }
-        model_dict.update(pretrained_dict_filtered)
-        self.base.load_state_dict(model_dict)
-        self.base.train()
-        print("=== loaded pretrained CNN ====")
+        # model_dict = self.base.state_dict()
+        # keys = list(pretrained_dict.keys())
+        # for key in keys:
+        #     pretrained_dict[key.replace("cnn",
+        #                                 "main")] = pretrained_dict.pop(key)
+        # pretrained_dict_filtered = {
+        #     k: v for k, v in pretrained_dict.items() if k in model_dict
+        # }
+        # model_dict.update(pretrained_dict_filtered)
+        # self.base.load_state_dict(model_dict)
+        # self.base.train()
+        # print("=== loaded pretrained CNN ====")
 
         ######FIXME END
 
@@ -79,14 +79,14 @@ class Policy(nn.Module):
 
             ######FIXME TEMPORARY for gibson experiments
 
-            model_dict = self.dist.state_dict()
-            pretrained_dict_filtered = {
-                k: v for k, v in pretrained_dict.items() if k in model_dict
-            }
-            model_dict.update(pretrained_dict_filtered)
-            self.dist.load_state_dict(model_dict)
-            self.dist.train()
-            print("=== loaded pretrained DiagGauss ====")
+            # model_dict = self.dist.state_dict()
+            # pretrained_dict_filtered = {
+            #     k: v for k, v in pretrained_dict.items() if k in model_dict
+            # }
+            # model_dict.update(pretrained_dict_filtered)
+            # self.dist.load_state_dict(model_dict)
+            # self.dist.train()
+            # print("=== loaded pretrained DiagGauss ====")
 
             ######FIXME END
 
