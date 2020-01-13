@@ -159,7 +159,7 @@ def main():
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
                     rollouts.obs[step], rollouts.recurrent_hidden_states[step],
-                    rollouts.masks[step])
+                    rollouts.masks[step], deterministic=args.det)
 
             # Observe reward and next obs
             obs, reward, done, infos = envs.step(action)

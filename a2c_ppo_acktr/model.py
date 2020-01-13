@@ -77,6 +77,11 @@ class Policy(nn.Module):
             num_outputs = action_space.shape[0]
             self.dist = DiagGaussian(self.base.output_size, num_outputs)
 
+
+
+
+
+
             ######FIXME TEMPORARY for gibson experiments
 
             # model_dict = self.dist.state_dict()
@@ -89,6 +94,9 @@ class Policy(nn.Module):
             # print("=== loaded pretrained DiagGauss ====")
 
             ######FIXME END
+
+
+
 
 
 

@@ -73,6 +73,11 @@ def get_args():
         default=False,
         help="sets flags for determinism when using CUDA (potentially slow!)")
     parser.add_argument(
+        '--det',
+        action='store_true',
+        default=False,
+        help='whether to use a deterministic action (so far only recommended for gibson)')
+    parser.add_argument(
         '--num-processes',
         type=int,
         default=1,
