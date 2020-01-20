@@ -51,7 +51,7 @@ class A2C_ACKTR():
         action_loss = -(advantages.detach() * action_log_probs).mean()
 
         if self.acktr and self.optimizer.steps % self.optimizer.Ts == 0:
-            # Sampled fisher, see Martens 2014
+            # Compute fisher, see Martens 2014
             self.actor_critic.zero_grad()
             pg_fisher_loss = -action_log_probs.mean()
 
