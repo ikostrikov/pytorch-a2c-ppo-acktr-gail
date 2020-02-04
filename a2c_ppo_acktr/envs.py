@@ -44,8 +44,6 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
 
         env.seed(seed + rank)
 
-        obs_shape = env.observation_space.shape
-
         if str(env.__class__.__name__).find('TimeLimit') >= 0:
             env = TimeLimitMask(env)
 
