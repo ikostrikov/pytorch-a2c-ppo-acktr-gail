@@ -150,7 +150,7 @@ def make_vec_envs(env_name,
         envs = ShmemVecEnv(envs, context='fork')
     else:
         print("ENV: DummyVecEnv")
-        envs = DummyVecEnv(envs)
+        envs = DummyVecEnvPPO(envs)
 
     if len(envs.observation_space.shape) == 1:
         if gamma is None:
@@ -252,6 +252,7 @@ class VecPyTorch(VecEnvWrapper):
         obs, reward, done, info = self.venv.step_wait()
         obs = torch.from_numpy(obs).float().to(self.device)
         reward = torch.from_numpy(reward).unsqueeze(dim=1).float()
+
         return obs, reward, done, info
 
 
@@ -322,3 +323,25 @@ class VecPyTorchFrameStack(VecEnvWrapper):
 
     def close(self):
         self.venv.close()
+
+
+class DummyVecEnvPPO(DummyVecEnv):
+
+    def step_wait(self):
+        for e in range(self.num_envs):
+            action = self.actions[e]
+            # if isinstance(self.envs[e].action_space, spaces.Discrete):
+            #    action = int(action)
+
+            obs, self.buf_rews[e], self.buf_dones[e], self.buf_infos[
+                e] = self.envs[e].step(action)
+
+            buf_infos = [d.copy() for d in self.buf_infos]
+
+            if self.buf_dones[e]:
+                obs = self.envs[e].reset()
+            self._save_obs(e, obs)
+
+        return (self._obs_from_buf(), np.copy(self.buf_rews),
+                np.copy(self.buf_dones), buf_infos)
+

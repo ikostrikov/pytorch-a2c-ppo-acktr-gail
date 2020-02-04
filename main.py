@@ -143,6 +143,22 @@ def main():
     episode_success_rate = deque(maxlen=100)
     episode_total = 0
 
+    gibson = False
+    if "gibson" in args.custom_gym and "TwoPlayer" in args.env_name:
+        gibson = True
+        player_correct_stacks = deque(maxlen=10)
+        opponent_correct_stacks = deque(maxlen=10)
+        player_floor_placements = deque(maxlen=10)
+        opponent_floor_placements = deque(maxlen=10)
+        avg_tower_height = deque(maxlen=10)
+        avg_win_rate = deque(maxlen=10)
+        avg_cubes_placed_total = deque(maxlen=10)
+        avg_player_dist_to_ref = deque(maxlen=10)
+        avg_opponent_dist_to_ref = deque(maxlen=10)
+        opponnet_policies = deque(maxlen=10)
+
+        cached_stats = None
+
     start = time.time()
     num_updates = int(
         args.num_env_steps) // args.num_steps // args.num_processes
@@ -171,6 +187,18 @@ def main():
                         episode_success_rate.append(
                             info['was_successful_trajectory'])
                     episode_total += 1
+
+                    if gibson and "success" in info:
+                        player_correct_stacks.append(info['player_correct_stacks'])
+                        opponent_correct_stacks.append(info['opponent_correct_stacks'])
+                        player_floor_placements.append(info['player_floor_placements'])
+                        opponent_floor_placements.append(info['opponent_floor_placements'])
+                        avg_tower_height.append(np.mean(info['avg_tower_height']))
+                        avg_win_rate.append(np.mean(info['avg_win_rate']))
+                        avg_cubes_placed_total.append(np.mean(info['avg_cubes_placed_total']))
+                        avg_player_dist_to_ref.append(np.mean(info['avg_player_dist_to_ref']))
+                        avg_opponent_dist_to_ref.append(np.mean(info['avg_opponent_dist_to_ref']))
+                        opponnet_policies.append(info['opponnet_policies'])
 
             # If done then clean the history of observations.
             masks = torch.FloatTensor(
@@ -238,7 +266,7 @@ def main():
                     os.remove(os.path.join(target_path,policies[0]))
 
                 print ("\n\n\n\n\nPPO: WRITING NEW POLICY:",j,"\n\n\n\n\n\n")
-                copyfile(source_path, os.path.join(target_path, f"ep-{j:06}-ppo.pt"))
+                copyfile(source_path, os.path.join(target_path, f"ep-PPO-{j:06}.pt"))
 
 
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
@@ -265,6 +293,50 @@ def main():
                     "Episode Length Max",
                     np.max(episode_length),
                     step=total_num_steps)
+
+
+                if gibson:
+                    experiment.log_metric(
+                        "Player Correct Placements",
+                        np.mean(player_correct_stacks),
+                        step=total_num_steps)
+                    experiment.log_metric(
+                        "Opponent Correct Placements",
+                        np.mean(opponent_correct_stacks),
+                        step=total_num_steps)
+                    experiment.log_metric(
+                        "Player Floor Placements",
+                        np.mean(player_floor_placements),
+                        step=total_num_steps)
+                    experiment.log_metric(
+                        "Opponent Floot Placements",
+                        np.mean(opponent_floor_placements),
+                        step=total_num_steps)
+                    experiment.log_metric(
+                        "Avg Tower Height",
+                        np.mean(avg_tower_height),
+                        step=total_num_steps)
+                    experiment.log_metric(
+                        "Avg Win Rate",
+                        np.mean(avg_win_rate),
+                        step=total_num_steps)
+                    experiment.log_metric(
+                        "Avg Cubes Placed",
+                        np.mean(avg_cubes_placed_total),
+                        step=total_num_steps)
+                    experiment.log_metric(
+                        "Avg Player Distance",
+                        np.mean(avg_player_dist_to_ref),
+                        step=total_num_steps)
+                    experiment.log_metric(
+                        "Avg Opponent Distance",
+                        np.mean(avg_opponent_dist_to_ref),
+                        step=total_num_steps)
+                    experiment.log_metric(
+                        "Opponent Policies",
+                        np.mean(opponnet_policies),
+                        step=total_num_steps)
+
                 # experiment.log_metric("# Trajectories (Total)", j, step=total_num_steps)
                 # if "Pacman" not in args.env_name:
                 #     experiment.log_metric("Episodic Success Rate", np.mean(episode_success_rate), step=total_num_steps)

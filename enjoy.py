@@ -91,4 +91,4 @@ while True:
     if render_func is not None:
         render_func('rgb_array')
 
-    # time.sleep(3)
+    time.sleep(.5)
