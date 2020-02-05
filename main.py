@@ -260,7 +260,7 @@ def main():
                 print ("PPO: target path",target_path)
 
                 # if it's more than 20 policies, delete one at random
-                policies = [x for x in os.listdir(target_path) if "-ppo.pt" in x]
+                policies = [x for x in os.listdir(target_path) if "-PPO-" in x and ".pt" in x[-3:]]
                 if len(policies) > 20:
                     shuffle(policies)
                     os.remove(os.path.join(target_path,policies[0]))
