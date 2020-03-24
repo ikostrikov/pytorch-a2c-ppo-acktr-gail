@@ -162,6 +162,11 @@ def get_args():
         default=False,
         help='replaces CNN with VGG16')
     parser.add_argument(
+        '--mobilenet',
+        action='store_true',
+        default=False,
+        help='replaces CNN with Mobilenet')
+    parser.add_argument(
         '--use-proper-time-limits',
         action='store_true',
         default=False,

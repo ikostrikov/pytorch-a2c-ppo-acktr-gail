@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.models import vgg16
+from torchvision.models import vgg16, mobilenet_v2
 
 from a2c_ppo_acktr.distributions import Bernoulli, Categorical, DiagGaussian
 from a2c_ppo_acktr.utils import init
@@ -33,6 +33,7 @@ class Policy(nn.Module):
             else:
                 raise NotImplementedError
 
+        print ("DEV: PPO using base:", type(base).__name__)
         self.base = base(obs_shape[0], **base_kwargs)
         # print(self.base.state_dict().keys())
 
@@ -308,6 +309,29 @@ class VGGBase(NNBase):
 
         self.main = vgg16(pretrained=True, progress=True)
         self.main.classifier = nn.Sequential(*list(self.main.classifier.children())[:-3])
+
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0))
+
+        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+
+        self.train()
+
+    def forward(self, inputs, rnn_hxs, masks):
+        x = self.main(inputs / 255.0)
+        if self.is_recurrent:
+            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+
+        return self.critic_linear(x), x, rnn_hxs
+
+
+class MobilenetBase(NNBase):
+
+    def __init__(self, num_inputs, recurrent=False, hidden_size=1280):
+        super(MobilenetBase, self).__init__(recurrent, hidden_size, hidden_size)
+
+        self.main = mobilenet_v2(pretrained=True, progress=True)
+        self.main.classifier = nn.Identity()
 
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0))
