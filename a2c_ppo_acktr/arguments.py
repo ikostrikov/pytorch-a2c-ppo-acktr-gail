@@ -157,6 +157,11 @@ def get_args():
         default=False,
         help='disables CUDA training')
     parser.add_argument(
+        '--vgg',
+        action='store_true',
+        default=False,
+        help='replaces CNN with VGG16')
+    parser.add_argument(
         '--use-proper-time-limits',
         action='store_true',
         default=False,

@@ -18,7 +18,7 @@ from a2c_ppo_acktr import algo, utils
 from a2c_ppo_acktr.algo import gail
 from a2c_ppo_acktr.arguments import get_args
 from a2c_ppo_acktr.envs import make_vec_envs
-from a2c_ppo_acktr.model import Policy, RandomPolicy, NaviBase
+from a2c_ppo_acktr.model import Policy, RandomPolicy, NaviBase, VGGBase
 from a2c_ppo_acktr.storage import RolloutStorage
 from evaluation import evaluate
 
@@ -68,6 +68,8 @@ def main():
     base = None
     if args.navi:
         base = NaviBase
+    if args.vgg:
+        base = VGGBase
     obs_shape = envs.observation_space.shape
 
     actor_critic = Policy(
