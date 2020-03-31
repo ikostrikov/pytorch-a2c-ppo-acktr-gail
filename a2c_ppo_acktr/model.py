@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from efficientnet_pytorch import EfficientNet
 from torchvision.models import vgg16, mobilenet_v2
 
 from a2c_ppo_acktr.distributions import Bernoulli, Categorical, DiagGaussian
@@ -342,6 +343,28 @@ class MobilenetBase(NNBase):
 
     def forward(self, inputs, rnn_hxs, masks):
         x = self.main(inputs / 255.0)
+        if self.is_recurrent:
+            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+
+        return self.critic_linear(x), x, rnn_hxs
+
+
+class EfficientnetBase(NNBase):
+
+    def __init__(self, num_inputs, recurrent=False, hidden_size=5120):
+        super(EfficientnetBase, self).__init__(recurrent, hidden_size, hidden_size)
+
+        self.main = EfficientNet.from_pretrained("efficientnet-b0", advprop=False)
+
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0))
+
+        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+
+        self.train()
+
+    def forward(self, inputs, rnn_hxs, masks):
+        x = self.main.extract_features(inputs / 255.0).view(-1, 1280 * 4)
         if self.is_recurrent:
             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
 

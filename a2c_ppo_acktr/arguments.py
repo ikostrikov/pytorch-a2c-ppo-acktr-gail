@@ -167,6 +167,11 @@ def get_args():
         default=False,
         help='replaces CNN with Mobilenet')
     parser.add_argument(
+        '--efficientnet',
+        action='store_true',
+        default=False,
+        help='replaces CNN with Efficientnet')
+    parser.add_argument(
         '--use-proper-time-limits',
         action='store_true',
         default=False,
