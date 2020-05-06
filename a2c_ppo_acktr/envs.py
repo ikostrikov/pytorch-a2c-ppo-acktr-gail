@@ -103,6 +103,8 @@ def make_env(env_id,
                     env = wrap_deepmind(env)
             elif "Gibson" in env_id:
                 env = wrap_gibson(env)
+            elif "Splearn" in env_id:
+                pass
             elif len(env.observation_space.shape) == 3:
                 raise NotImplementedError(
                     "CNN models work only for atari,\n"
