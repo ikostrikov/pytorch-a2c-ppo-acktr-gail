@@ -26,25 +26,22 @@ from evaluation import evaluate
 def main():
     args = get_args()
 
-    if comet_loaded and len(args.comet) > 0:
-        comet_credentials = args.comet.split("/")
-        print(
-            f"starting experiment in workspace '{comet_credentials[0]}'"
-            f" in project '{comet_credentials[1]}' with api key '{comet_credentials[2]}'"
-        )
-        experiment = Experiment(
-            api_key=comet_credentials[2],
-            project_name=comet_credentials[1],
-            workspace=comet_credentials[0])
-        experiment.set_name("ppo")
-        for key, value in vars(args).items():
-            experiment.log_parameter(key, value)
-        if len(args.comet_tags) > 0:
-            comet_tags = args.comet_tags.split(",")
-            for tag in comet_tags:
-                experiment.add_tag(tag)
+    if args.wandb is not None:
+        if not utils.is_connected():
+            print('no internet connection. Going in dry')
+            os.environ['WANDB_MODE'] = 'dryrun'
+        import wandb
+
+        if args.wandb_key is not None:
+            wandb.login(key=args.wandb_key)
+        if args.name is None:
+            wandb.init(project=args.wandb)
+        else:
+            wandb.init(project=args.wandb, name=args.name)
+        wandb.config.update(args)
     else:
-        experiment = None
+        wandb=None
+
 
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
@@ -82,6 +79,7 @@ def main():
         base_kwargs={'recurrent': args.recurrent_policy},
         navi=args.navi,
         base=base,
+        hidden_size=args.hidden_size,
     )
     actor_critic.to(device)
 
@@ -276,69 +274,58 @@ def main():
 
 
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
+            
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
             end = time.time()
-            if experiment is not None:
-                experiment.log_metric(
-                    "Reward Mean",
-                    np.mean(episode_rewards),
-                    step=total_num_steps)
-                experiment.log_metric(
-                    "Reward Min", np.min(episode_rewards), step=total_num_steps)
-                experiment.log_metric(
-                    "Reward Max", np.max(episode_rewards), step=total_num_steps)
-                experiment.log_metric(
-                    "Episode Length Mean ",
-                    np.mean(episode_length),
-                    step=total_num_steps)
-                experiment.log_metric(
-                    "Episode Length Min",
-                    np.min(episode_length),
-                    step=total_num_steps)
-                experiment.log_metric(
-                    "Episode Length Max",
-                    np.max(episode_length),
-                    step=total_num_steps)
+            
+            if wandb is not None:
+                wandb.log({"Reward Mean":np.mean(episode_rewards)}, step=total_num_steps)
+                wandb.log({"Reward Min":np.min(episode_rewards)}, step=total_num_steps)
+                wandb.log({"Reward Max":np.max(episode_rewards)}, step=total_num_steps)
+                wandb.log({"Episode Length Mean ":np.mean(episode_length)}, step=total_num_steps)
+                wandb.log({"Episode Length Min":np.min(episode_length)}, step=total_num_steps)
+                wandb.log({"Episode Length Max":np.max(episode_length)},step=total_num_steps)
 
 
                 if gibson:
-                    experiment.log_metric(
+                    #TODO: adapt to wandb
+                    wandb.log(
                         "Player Correct Placements",
                         np.mean(player_correct_stacks),
                         step=total_num_steps)
-                    experiment.log_metric(
+                    wandb.log(
                         "Opponent Correct Placements",
                         np.mean(opponent_correct_stacks),
                         step=total_num_steps)
-                    experiment.log_metric(
+                    wandb.log(
                         "Player Floor Placements",
                         np.mean(player_floor_placements),
                         step=total_num_steps)
-                    experiment.log_metric(
+                    wandb.log(
                         "Opponent Floot Placements",
                         np.mean(opponent_floor_placements),
                         step=total_num_steps)
-                    experiment.log_metric(
+                    wandb.log(
                         "Avg Tower Height",
                         np.mean(avg_tower_height),
                         step=total_num_steps)
-                    experiment.log_metric(
+                    wandb.log(
                         "Avg Win Rate",
                         np.mean(avg_win_rate),
                         step=total_num_steps)
-                    experiment.log_metric(
+                    wandb.log(
                         "Avg Cubes Placed",
                         np.mean(avg_cubes_placed_total),
                         step=total_num_steps)
-                    experiment.log_metric(
+                    wandb.log(
                         "Avg Player Distance",
                         np.mean(avg_player_dist_to_ref),
                         step=total_num_steps)
-                    experiment.log_metric(
+                    wandb.log(
                         "Avg Opponent Distance",
                         np.mean(avg_opponent_dist_to_ref),
                         step=total_num_steps)
-                    experiment.log_metric(
+                    wandb.log(
                         "Opponent Policies",
                         np.mean(opponnet_policies),
                         step=total_num_steps)
@@ -346,6 +333,7 @@ def main():
                 # experiment.log_metric("# Trajectories (Total)", j, step=total_num_steps)
                 # if "Pacman" not in args.env_name:
                 #     experiment.log_metric("Episodic Success Rate", np.mean(episode_success_rate), step=total_num_steps)
+            
             print(
                 "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
                 .format(j, total_num_steps,

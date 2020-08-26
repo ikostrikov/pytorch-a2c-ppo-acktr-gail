@@ -22,12 +22,14 @@ class Policy(nn.Module):
                  action_space,
                  base=None,
                  base_kwargs=None,
-                 navi=False):
+                 navi=False,
+                 hidden_size=64):
         super(Policy, self).__init__()
         if base_kwargs is None:
             base_kwargs = {}
         if base is None:
             if len(obs_shape) == 3:
+                #TODO(add hidden size)
                 base = CNNBase
             elif len(obs_shape) == 1:
                 base = MLPBase
@@ -35,7 +37,7 @@ class Policy(nn.Module):
                 raise NotImplementedError
 
         print ("DEV: PPO using base:", type(base).__name__)
-        self.base = base(obs_shape[0], **base_kwargs)
+        self.base = base(obs_shape[0], hidden_size=hidden_size, **base_kwargs)
         # print(self.base.state_dict().keys())
 
 

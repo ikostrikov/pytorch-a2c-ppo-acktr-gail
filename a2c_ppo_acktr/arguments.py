@@ -140,14 +140,6 @@ def get_args():
         default='',
         help='import some dependency package for thew gym env')
     parser.add_argument(
-        '--comet',
-        default='',
-        help='add comet.ml credentials in the format workspace/project/api_key')
-    parser.add_argument(
-        '--comet-tags',
-        default='',
-        help='add comet.ml tags to the experiment (comma-separated). Requires --comet flag. Example: ... --comet-tags abc,def,ghi ...')
-    parser.add_argument(
         '--save-dir',
         default='./trained_models/',
         help='directory to save agent logs (default: ./trained_models/)')
@@ -191,6 +183,16 @@ def get_args():
         action='store_true',
         default=False,
         help='use the custom dictionary observation from the navi project')
+    
+    ## Massimo's args
+    
+    # logging
+    parser.add_argument('--wandb',     type=str, default=None, help='Wandb project name. If None, no wandb logging')
+    parser.add_argument('--name',      type=str, default=None, help='Wandb run name. If None, name will be random')
+    parser.add_argument('--wandb_key', type=str, default=None, help='Wandb token key for login. If None, shell login assumed')
+
+    parser.add_argument('--hidden_size', type=int, default=64, help='size of the hidden state')
+
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

@@ -22,7 +22,7 @@ parser.add_argument(
     help='log interval, one log per n updates (default: 10)')
 parser.add_argument(
     '--env-name',
-    default='PongNoFrameskip-v4',
+    default='Pupper-Walk-Relative-ScaledDown-Headless-v0',
     help='environment to train on (default: PongNoFrameskip-v4)')
 parser.add_argument('--model', help='path to saved model')
 parser.add_argument(

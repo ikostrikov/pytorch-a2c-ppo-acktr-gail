@@ -63,3 +63,11 @@ def cleanup_log_dir(log_dir):
         files = glob.glob(os.path.join(log_dir, '*.monitor.csv'))
         for f in files:
             os.remove(f)
+
+def is_connected(host='http://google.com'):
+    import urllib.request
+    try:
+        urllib.request.urlopen(host) #Python 3.x
+        return True
+    except:
+        return False
