@@ -41,12 +41,6 @@ class Policy(nn.Module):
         # print(self.base.state_dict().keys())
 
 
-
-
-
-
-
-
         ######FIXME TEMPORARY for gibson experiments
 
         # pretrained_dict = torch.load(
@@ -68,10 +62,6 @@ class Policy(nn.Module):
         ######FIXME END
 
 
-
-
-
-
         if action_space.__class__.__name__ == "Discrete":
             num_outputs = action_space.n
             net_outputs = self.base.output_size
@@ -81,10 +71,6 @@ class Policy(nn.Module):
         elif action_space.__class__.__name__ == "Box":
             num_outputs = action_space.shape[0]
             self.dist = DiagGaussian(self.base.output_size, num_outputs)
-
-
-
-
 
 
             ######FIXME TEMPORARY for gibson experiments
@@ -99,11 +85,6 @@ class Policy(nn.Module):
             # print("=== loaded pretrained DiagGauss ====")
 
             ######FIXME END
-
-
-
-
-
 
 
         elif action_space.__class__.__name__ == "MultiBinary":
