@@ -39,7 +39,7 @@ To use the DeepMind Control Suite environments, set the flag `--env-name dm.<dom
 
 * Python 3 (it might work with Python 2, but I didn't test it)
 * [PyTorch](http://pytorch.org/)
-* [OpenAI baselines](https://github.com/openai/baselines)
+* [Stable baselines3](https://github.com/DLR-RM/stable-baselines3)
 
 In order to install requirements, follow:
 
