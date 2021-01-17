@@ -22,7 +22,8 @@ from evaluation import evaluate
 
 def main():
     args = get_args()
-
+    if args.disable_fork_safety:
+        os.environ['OBJC_DISABLE_INITIALIZE_FORK_SAFETY'] = 'YES'
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
 
