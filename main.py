@@ -172,7 +172,7 @@ def main():
 
             torch.save([
                 actor_critic,
-                getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
+                getattr(utils.get_vec_normalize(envs), 'obs_rms', None)
             ], os.path.join(save_path, args.env_name + ".pt"))
 
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
@@ -189,8 +189,8 @@ def main():
 
         if (args.eval_interval is not None and len(episode_rewards) > 1
                 and j % args.eval_interval == 0):
-            ob_rms = utils.get_vec_normalize(envs).ob_rms
-            evaluate(actor_critic, ob_rms, args.env_name, args.seed,
+            obs_rms = utils.get_vec_normalize(envs).obs_rms
+            evaluate(actor_critic, obs_rms, args.env_name, args.seed,
                      args.num_processes, eval_log_dir, device)
 
 

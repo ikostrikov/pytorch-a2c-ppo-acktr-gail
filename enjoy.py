@@ -49,14 +49,14 @@ env = make_vec_envs(
 render_func = get_render_func(env)
 
 # We need to use the same statistics for normalization as used in training
-actor_critic, ob_rms = \
+actor_critic, obs_rms = \
             torch.load(os.path.join(args.load_dir, args.env_name + ".pt"),
                         map_location='cpu')
 
 vec_norm = get_vec_normalize(env)
 if vec_norm is not None:
     vec_norm.eval()
-    vec_norm.ob_rms = ob_rms
+    vec_norm.obs_rms = obs_rms
 
 recurrent_hidden_states = torch.zeros(1,
                                       actor_critic.recurrent_hidden_state_size)
