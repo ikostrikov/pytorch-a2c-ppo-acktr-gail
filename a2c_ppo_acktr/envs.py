@@ -192,11 +192,11 @@ class VecNormalize(VecNormalize_):
         self.training = True
 
     def _obfilt(self, obs, update=True):
-        if self.ob_rms:
+        if self.obs_rms:
             if self.training and update:
-                self.ob_rms.update(obs)
-            obs = np.clip((obs - self.ob_rms.mean) /
-                          np.sqrt(self.ob_rms.var + self.epsilon),
+                self.obs_rms.update(obs)
+            obs = np.clip((obs - self.obs_rms.mean) /
+                          np.sqrt(self.obs_rms.var + self.epsilon),
                           -self.clipob, self.clipob)
             return obs
         else:
