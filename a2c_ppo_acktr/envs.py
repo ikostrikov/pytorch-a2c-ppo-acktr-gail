@@ -201,7 +201,7 @@ class VecNormalize(VecNormalize_):
                 self.obs_rms.update(obs)
             obs = np.clip((obs - self.obs_rms.mean) /
                           np.sqrt(self.obs_rms.var + self.epsilon),
-                          -self.clipob, self.clipob)
+                          -self.clip_obs, self.clip_obs)
             return obs
         else:
             return obs
