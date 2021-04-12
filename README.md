@@ -1,5 +1,9 @@
 # pytorch-a2c-ppo-acktr
 
+## Update (April 12th, 2021)
+
+PPO is great, but [Soft Actor Critic](https://arxiv.org/abs/1812.05905) can be better for many continuous control tasks. Please check out [my new RL](http://github.com/ikostrikov/jax-rl) repository in jax.
+
 ## Please use hyper parameters from this readme. With other hyper parameters things might not work (it's RL after all)!
 
 This is a PyTorch implementation of
