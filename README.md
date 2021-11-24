@@ -53,6 +53,9 @@ conda install pytorch torchvision -c soumith
 
 # Other requirements
 pip install -r requirements.txt
+
+# Gym Atari
+conda install -c conda-forge gym-atari
 ```
 
 ## Contributions
