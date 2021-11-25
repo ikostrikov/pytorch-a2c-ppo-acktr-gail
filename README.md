@@ -44,6 +44,7 @@ To use the DeepMind Control Suite environments, set the flag `--env-name dm.<dom
 * Python 3 (it might work with Python 2, but I didn't test it)
 * [PyTorch](http://pytorch.org/)
 * [Stable baselines3](https://github.com/DLR-RM/stable-baselines3)
+* [PyBullet](https://pybullet.org/wordpress/) (For windows installation, please refer to [here](https://deepakjogi.medium.com/how-to-install-pybullet-physics-simulation-in-windows-e1f16baa26f6))
 
 In order to install requirements, follow:
 
