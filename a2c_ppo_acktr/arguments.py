@@ -149,6 +149,12 @@ def get_args():
         action='store_true',
         default=False,
         help='use a linear schedule on the learning rate')
+    parser.add_argument(
+        '--disable-fork-safety',
+        action='store_true',
+        default=False,
+        help='Add an environment variable to prevent occasional '
+             'conflict with macOS fork safety')
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
