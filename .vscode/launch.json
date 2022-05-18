@@ -1,0 +1,28 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "PPO Train",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "args": ["--env-name", "Reacher-v2", "--algo", "ppo",
+                 "--use-gae", "--log-interval", "1", "--num-steps", "2048", "--num-processes", "10", "--lr", 
+                 "3e-4", "--entropy-coef", "0", "--value-loss-coef", "0.5", "--ppo-epoch", "10", "--num-mini-batch", "32", 
+                 "--gamma", "0.99", "--gae-lambda", "0.95", "--num-env-steps", "1000000", "--use-linear-lr-decay", "--use-proper-time-limits"],
+            "justMyCode": false
+        }
+    ]
+}
