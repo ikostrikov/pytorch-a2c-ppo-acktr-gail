@@ -1,0 +1,34 @@
+id: clean
+env_name: HalfCheetah-v3
+num_frame_stack: 4
+screen_sz: 100
+seed: 1234
+device_id: 
+log_interval: 3
+gamma: 0.99
+num_processes: 32
+eval_interval:
+recurrent_policy: False
+algorithm: ppo
+train: 
+  save_interval: 100
+  num_steps: 2048
+  num_env_steps: 1000000
+  use_linear_lr_decay: False
+  episode_rewards_queue_len: 10
+  compute_returns:
+    use_gae: True
+    gae_lambda: 0.95
+    use_proper_time_limits: True
+  algorithm_params:
+    clip_param: 0.2
+    ppo_epoch: 10
+    num_mini_batch: 32
+    value_loss_coef: 0.5
+    entropy_coef: 0
+    lr: 0.0003
+    eps: 0.00001
+    max_grad_norm: 0.5
+    use_clipped_value_loss: True
+validation:
+  augmentation: ['no_aug', 'grayscale']

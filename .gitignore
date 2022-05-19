@@ -100,5 +100,5 @@ venv.bak/
 # mkdocs documentation
 /site
 
-trained_models/
+checkpoints/
 .fuse_hidden*
