@@ -42,7 +42,7 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
             env = gym.make(env_id)
 
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
-            env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
+            env.unwrapped, gym.envs.atari.AtariEnv)
         if is_atari:
             env = NoopResetEnv(env, noop_max=30)
             env = MaxAndSkipEnv(env, skip=4)
@@ -177,7 +177,8 @@ class VecPyTorch(VecEnvWrapper):
         return obs
 
     def step_async(self, actions):
-        if isinstance(actions, torch.LongTensor):
+        if actions.dtype is torch.int64:
+        #if isinstance(actions, torch.LongTensor):
             # Squeeze the dimension for discrete actions
             actions = actions.squeeze(1)
         actions = actions.cpu().numpy()
