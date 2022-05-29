@@ -102,6 +102,15 @@ def main():
     start = time.time()
     num_updates = int(
         args.num_env_steps) // args.num_steps // args.num_processes
+
+    # use state entropy maximization to improve exploration
+    if args.use_sem:
+        sem = utils.SEM(
+            ob_space=envs.observation_space,
+            action_space=envs.action_space,
+            device=device,
+            num_updates=num_updates)
+
     for j in range(num_updates):
 
         if args.use_linear_lr_decay:
@@ -117,7 +126,7 @@ def main():
                     rollouts.obs[step], rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step])
 
-            # Obser reward and next obs
+            # Observe reward and next obs
             obs, reward, done, infos = envs.step(action)
 
             for info in infos:
@@ -137,6 +146,11 @@ def main():
             next_value = actor_critic.get_value(
                 rollouts.obs[-1], rollouts.recurrent_hidden_states[-1],
                 rollouts.masks[-1]).detach()
+
+        # compute intrinsic rewards
+        if args.use_sem:
+            intrinsic_rewards = sem.compute_intrinsic_rewards(rollouts.obs, update_step=j)
+            rollouts.rewards += intrinsic_rewards.to(device)
 
         if args.gail:
             if j >= 10:
